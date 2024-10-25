@@ -24,10 +24,7 @@ library(dplyr)
 
 
 ```{r load-data}
-age_and_sex <- read_csv("data/Age and sex.csv")
-age_and_sex <- age_and_sex %>% select(-c("HBRQF", "DatasetQF", "DischargeCountQF", "DischargeRatesQF", "PatientCountQF", "PatientRatesQF"))
-deprivation <- read_csv("data/Deprivation.csv")
-length_of_stay <- read_csv("data/Length of stay.csv")
+nvidia <- read_csv("data/nvidia_market_analytics.csv")
 
 
 
