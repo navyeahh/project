@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r load-lib, message = FALSE}
 library(tidyverse)
-# Add any other libraries here
+library(readr)
 
 
 
@@ -24,7 +24,9 @@ library(tidyverse)
 
 
 ```{r load-data}
-# load your data 
+read_csv(data/"Age and sex.csv")
+read_csv(data/"Deprivation.csv")
+read_csv(data/"Length of stay.csv")
 
 
 
