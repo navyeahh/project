@@ -24,9 +24,9 @@ library(readr)
 
 
 ```{r load-data}
-read_csv(data/"Age and sex.csv")
-read_csv(data/"Deprivation.csv")
-read_csv(data/"Length of stay.csv")
+read_csv("data/Age and sex.csv")
+read_csv("data/Deprivation.csv")
+read_csv("data/Length of stay.csv")
 
 
 
