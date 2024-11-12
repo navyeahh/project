@@ -18,17 +18,51 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readr)
 library(dplyr)
-
+library(janitor)
 
 ```
 
+
+
+create_regions creates a csv file called file_name, filtering nvidia by reg. 
+create_csv creates dataframes for each region in nvidia (I ran create_csv(regions, file_names) in console). 
+region_dfs is a list of all dataframes by region. 
 
 ```{r load-data}
-nvidia <- read_csv("data/nvidia_market_analytics.csv")
+nvidia <- read_csv("data/nvidia_market_analytics.csv", show_col_types = FALSE) %>%
+  clean_names() %>%
+  select(-product_launch_date, -competitor_product)
 
+create_regions <- function(reg, file_name) {
+  df <- filter(nvidia, region == reg)
+  write_csv(df, file = paste0("data/", file_name, ".csv"))
+}
 
+regions <- c("APAC", "Africa", "Europe", "Middle East", "North America", "South America")
+file_names <- c("apac", "africa", "europe", "middle_east", "north_america", "south_america")
+
+create_csv <- function(l1, l2) {
+  for (i in seq_along(l1)) {
+  create_regions(l1[i], l2[i])
+  }}
+
+apac <- read_csv("data/apac.csv", show_col_types = FALSE)
+africa <- read_csv("data/africa.csv", show_col_types = FALSE)
+europe <- read_csv("data/europe.csv", show_col_types = FALSE)
+middle_east <- read_csv("data/middle_east.csv", show_col_types = FALSE)
+north_america <- read_csv("data/north_america.csv", show_col_types = FALSE)
+south_america <- read_csv("data/south_america.csv", show_col_types = FALSE)
+
+region_dfs <- c(apac, africa, europe, middle_east, north_america, south_america)
 
 
 ```
+
+
+
+
+
+
+
 
 
