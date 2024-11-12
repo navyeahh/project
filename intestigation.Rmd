@@ -60,6 +60,35 @@ region_dfs <- c(apac, africa, europe, middle_east, north_america, south_america)
 
 
 
+```{r data-analysis}
+
+discount_satisfaction <- function(reg) {
+  ggplot(data=reg,
+         mapping = aes(
+           x = discount_percentage_percent,
+           y = customer_satisfaction
+         )) +
+    geom_point() +
+    facet_wrap(~ product_category,
+               ncol = 2,
+               scales = "free")
+}
+
+discount_satisfaction(apac)
+
+
+  
+time_share <- function(reg) {
+  ggplot(reg, aes(x = format(date, "%Y"), y = market_share_percent)) +
+  stat_summary(fun = "mean", geom = "line", aes(group = 1)) +
+  stat_summary(fun = "mean", geom = "point") +
+  facet_wrap(~ product_category,
+               ncol = 1,
+               scales = "free")
+}
+
+time_share(europe)
+```
 
 
 
