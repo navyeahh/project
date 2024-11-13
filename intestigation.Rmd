@@ -88,6 +88,16 @@ time_share <- function(reg) {
 }
 
 time_share(europe)
+
+# to see product distribution across regions
+nvidia%>%
+  select(product_category, region)%>%
+ggplot(
+  mapping = aes( y = product_category,
+                 fill = region)
+)+
+  geom_bar()
+  
 ```
 
 
