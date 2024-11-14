@@ -79,7 +79,8 @@ discount_satisfaction(apac)
 
   
 time_share <- function(reg) {
-  ggplot(reg, aes(x = format(date, "%Y"), y = market_share_percent)) +
+  ggplot(reg %>% filter(date >= as.Date("2018-01-01") & date <= as.Date("2024-12-31")),
+         aes(x = format(date, "%Y-%m"), y = market_share_percent)) +
   stat_summary(fun = "mean", geom = "line", aes(group = 1)) +
   stat_summary(fun = "mean", geom = "point") +
   facet_wrap(~ product_category,
@@ -97,11 +98,58 @@ ggplot(
                  fill = region)
 )+
   geom_bar()
+
+
+
   
 ```
 
+``` {r}
+
+pandemic_eu <- europe %>% 
+  filter(date >= as.Date("2018-01-01") & date <= as.Date("2024-12-31")) %>%
+  mutate(year_month = format(date, "%Y-%m")) %>%
+  group_by(year_month, customer_segment) %>%
+  summarise(avg_share = mean(market_share_percent), avg_spend = mean(marketing_spend_usd), avg_sold = mean(units_sold), avg_satisfaction = mean(customer_satisfaction))
+
+pandemic_eu %>%
+  ggplot(mapping = aes(x = year_month, y = avg_sold)) +
+  geom_point() +
+  facet_wrap(~ customer_segment,
+               ncol = 1,
+               scales = "free")
 
 
+pandemic_eu %>%
+  ggplot(mapping = aes(x = avg_spend, y = avg_sold)) + 
+  geom_point() + 
+  facet_wrap(~ customer_segment,
+               ncol = 2,
+               scales = "free")
 
+pandemic_eu %>%
+  ggplot(mapping = aes(x = avg_spend, y = avg_satisfaction)) + 
+  geom_point() + 
+  facet_wrap(~ customer_segment,
+               ncol = 2,
+               scales = "free")
+
+
+pandemic_eu %>%
+  ggplot(mapping = aes(x = year_month, y = avg_share))+
+  geom_point() + 
+  facet_wrap(~ customer_segment,
+               ncol = 1,
+               scales = "free")
+  
+pandemic_eu %>%
+  ggplot(mapping = aes(x = year_month, y = avg_satisfaction))+
+  geom_point() + 
+  facet_wrap(~ customer_segment,
+               ncol = 1,
+               scales = "free")
+
+
+```
 
 
