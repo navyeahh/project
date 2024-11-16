@@ -58,5 +58,10 @@ olympics_medals %>%
   mutate(medals_pct = count/sum(count) * 100 ) %>%
   arrange(desc(medals_pct))
 
+# teams in sports
+olympics_medals %>%
+  count(team, sport) %>%
+  arrange(desc(n))
+
 ```
 
