@@ -69,26 +69,49 @@ olympics_medals %>%
 
 ``` {r}
 
+# find lower and upper quartiles
+Q1 = quantile(olympics_medals$age, 0.25)
+Q3 = quantile(olympics_medals$age, 0.75)
+
+# find interquartile range
+IQR <-  Q3 - Q1
+
+#find lower and upper bounds to filter out outliers
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
 olympics_medals %>% 
-  filter(age < 40) %>%
+  filter(age >= lower & age <= upper) %>%
   ggplot(mapping = aes(y = age, x = medal)) + 
   geom_boxplot() + 
   facet_wrap( ~ season)
 
 olympics_medals %>%
-  filter(age < 40) %>%
+  filter(age >= lower & age <= upper) %>%
   ggplot(mapping = aes(x = age, fill = season)) + 
   geom_density(alpha = 0.5) + 
   facet_wrap( ~ medal, 
               ncol = 1)
 
+olympics_medals %>%
+  filter(age >= lower & age <= upper) %>%
+  group_by(season, medal) %>%
+  summarise(avg = mean(age),
+            med = median(age))
+
+
+olympics_medals %>%
+  filter(age >= lower & age <= upper) %>%
+  group_by(season) %>%
+  summarise(avg = mean(age),
+            med = median(age))
 ```
 *  More outliers in summer olympics than in winter
-*  Avergae age of medal winners slightly higher in winter olympics
-*  Almost no outliers below 
-*  Very few winners after the age of 40 so focus on those below 40
-*  Distributions of age are closer to normal for each medal
-*  Winter olympics average age of winner still higher
+*  Avergae age of medal winners slightly higher in Winter Olympics (26) than in Summer (25)
+*  Almost no outliers below lower bound
+*  Remove outliers using Q1/Q3 -/+ 1.5IQR (this mostly targets outliers above upper bound)
+*  Distributions of age are closer to normal for each medal and season with differences between mean and median age not greater than 1 year
+
 
 
 
