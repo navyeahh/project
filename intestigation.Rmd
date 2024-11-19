@@ -85,10 +85,10 @@ bounds <- function(variable, s) {
 
 ```
 
+
 ## Age Distribution
 
-``` {r}
-
+``` {r, echo=FALSE}
 # find upper and lower bounds of age for each season separately
 bsW = bounds("age", "Winter")
 lowerW = bsW$lower
@@ -105,7 +105,9 @@ filteredA <- olympics_medals %>%
     upper = ifelse(season == "Winter", upperW, upperS)
   ) %>%
   filter(age >= lower & age <= upper)
+```
 
+``` {r}
 # create plots using filtered dataset
 filteredA %>%
   ggplot(mapping = aes(y = age, x = medal)) + 
@@ -140,20 +142,19 @@ filteredA %>%
   summarise(avg = mean(age),
             med = median(age))
 ```
-*  More outliers in summer olympics than in winter
-*  Avergae age of medal winners slightly higher in Winter Olympics (26) than in Summer (25)
-*  Almost no outliers below lower bound
-*  Remove outliers using Q1/Q3 -/+ 1.5IQR (this mostly targets outliers above upper bound)
-*  Distributions of age are closer to normal for each medal and season with differences between mean and median age not greater than 1 year
-*  For each medal, the average age of winner is between 24.98 and 25.11 years old
+* More outliers in Summer Olympics than in Winter
+* Avergae age of medal winners slightly higher in Winter Olympics (26) than in Summer (25)
+* Almost no outliers below lower bound
+* Remove outliers using Q1/Q3 -/+ 1.5IQR (this mostly targets outliers above upper bound)
+* Distributions of age are closer to normal for each medal and season with differences between mean and median age not greater than 1 year
+* For each medal, the average age of winner is between 24.98 and 25.11 years old
 
 
 
 
 ## Height Distribution
 
-``` {r}
-
+``` {r, echo=FALSE}
 # find upper and lower bounds of age for each season separately
 bsW = bounds("height", "Winter")
 lowerW = bsW$lower
@@ -170,7 +171,9 @@ filteredH <- olympics_medals %>%
     upper = ifelse(season == "Winter", upperW, upperS)
   ) %>%
   filter(height >= lower & height <= upper)
+```
 
+``` {r}
 filteredH %>%
   ggplot(mapping = aes(y = height, x = medal)) + 
   geom_boxplot() + 
@@ -205,59 +208,81 @@ filteredH %>%
             med = median(height))
 
 ```
-*  Very few outliers in winter olympics, a lot in summer on both ends of the distribution
-*  Remove outliers using Q1/Q3 -/+ 1.5IQR
-*  Range of heights greater for Summer Olympics athletes than Winter
-*  Average height slightly larger for Summer Olympics (178.0) than Winter (175.6)
-*  For each medal, the height distributions are close to normal in both seasons, with differences between mean and median of at most 1.1 cm
-*  For each medal, the average height of winner is between 177.3 and 178.0
+* Very few outliers in winter olympics, a lot in summer on both ends of the distribution
+* Remove outliers using Q1/Q3 -/+ 1.5IQR
+* Range of heights greater for Summer Olympics athletes than Winter
+* Average height slightly larger for Summer Olympics (178.0) than Winter (175.6)
+* For each medal, the height distributions are close to normal in both seasons, with differences between mean and median of at most 1.1 cm
+* For each medal, the average height of winner is between 177.3 and 178.0 cm
 
 
 
+## Weight Distribution
 
+``` {r, echo=FALSE}
+# find upper and lower bounds of age for each season separately
+bsW = bounds("weight", "Winter")
+lowerW = bsW$lower
+upperW = bsW$upper
+
+bsS = bounds("weight", "Summer")
+lowerS = bsS$lower
+upperS = bsS$upper
+
+# create new dataset by dynamically filtering out entries that are below/above lower/upper bounds
+filteredW <- olympics_medals %>%
+  mutate(
+    lower = ifelse(season == "Winter", lowerW, lowerS),
+    upper = ifelse(season == "Winter", upperW, upperS)
+  ) %>%
+  filter(weight >= lower & weight <= upper)
+```
 
 ``` {r}
-
-# find lower and upper quartiles
-Q1 = quantile(olympics_medals$weight, 0.25)
-Q3 = quantile(olympics_medals$weight, 0.75)
-
-# find interquartile range
-IQR <-  Q3 - Q1
-
-#find lower and upper bounds to filter out outliers
-lower = Q1 - 1.5 * IQR
-upper = Q3 + 1.5 * IQR
-
-olympics_medals %>% 
-  #filter(age >= lower & age <= upper) %>%
+filteredW %>%
   ggplot(mapping = aes(y = weight, x = medal)) + 
   geom_boxplot() + 
   facet_wrap( ~ season)
 
-olympics_medals %>%
-  #filter(age >= lower & age <= upper) %>%
+filteredW %>%
   ggplot(mapping = aes(x = weight, fill = season)) + 
   geom_density(alpha = 0.5) + 
   facet_wrap( ~ medal, 
               ncol = 1)
 
-olympics_medals %>%
-  #filter(age >= lower & age <= upper) %>%
+filteredW %>% 
+  ggplot(mapping = aes(x = weight, fill = medal)) + 
+  geom_density(alpha = 0.5) 
+
+# find mean and median weight for each combination of season and medal
+filteredW %>%
   group_by(season, medal) %>%
   summarise(avg = mean(weight),
             med = median(weight))
 
-
-olympics_medals %>%
-  #filter(age >= lower & age <= upper) %>%
+# find mean and median weight for each season
+filteredW %>%
   group_by(season) %>%
   summarise(avg = mean(weight),
             med = median(weight))
 
+# find mean and median weight for each season
+filteredW %>%
+  group_by(medal) %>%
+  summarise(avg = mean(weight),
+            med = median(weight))
+
+
 ```
 
 * Many outliers above upper bound in Summer Olympics, some below lower bound, but almost no outliers in Winter Olympics
+* Remove outliers using Q1/Q3 -/+ 1.5IQR
+* Range of athletes' weights higher in Summer Olympics than in Winter
+* Average weight slightly higher in Summer Olympics (73.1) than in Winter (72.7)
+* For each medal, the weight distributions are close to normal in both seasons, with differences between mean and median of at most 1.03 kg
+* For each medal, the average weight of winner is between 72.7 and 73.5 kg
+
+
 
 
 
