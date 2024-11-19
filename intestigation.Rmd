@@ -24,18 +24,15 @@ library(janitor)
 
 
 
-create_regions creates a csv file called file_name, filtering nvidia by reg. 
-create_csv creates dataframes for each region in nvidia (I ran create_csv(regions, file_names) in console). 
-region_dfs is a list of all dataframes by region. 
+
 
 ```{r load-data}
-olympics <- read_csv("~/Downloads/olympics.csv")
+olympics <- read_csv("data/olympics.csv", show_col_types = FALSE)
 ```
 
 ``` {r}
 
-olympics_medals <-
-  olympics %>%
+olympics_medals <- olympics %>%
   drop_na()
 
 #finding win percentage overall
@@ -65,3 +62,96 @@ olympics_medals %>%
 
 ```
 
+
+
+
+## Age Distribution
+
+``` {r}
+
+olympics_medals %>% 
+  filter(age < 40) %>%
+  ggplot(mapping = aes(y = age, x = medal)) + 
+  geom_boxplot() + 
+  facet_wrap( ~ season)
+
+olympics_medals %>%
+  filter(age < 40) %>%
+  ggplot(mapping = aes(x = age, fill = season)) + 
+  geom_density(alpha = 0.5) + 
+  facet_wrap( ~ medal, 
+              ncol = 1)
+
+```
+*  More outliers in summer olympics than in winter
+*  Avergae age of medal winners slightly higher in winter olympics
+*  Almost no outliers below 
+*  Very few winners after the age of 40 so focus on those below 40
+*  Distributions of age are closer to normal for each medal
+*  Winter olympics average age of winner still higher
+
+
+
+## Height Distribution
+
+``` {r}
+# find lower and upper quartiles
+Q1 = quantile(olympics_medals$height, 0.25)
+Q3 = quantile(olympics_medals$height, 0.75)
+
+# find interquartile range
+IQR <-  Q3 - Q1
+
+#find lower and upper bounds to filter out outliers
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
+
+olympics_medals %>% 
+  filter(height >= lower & height <= upper) %>%
+  ggplot(mapping = aes(y = height, x = medal)) + 
+  geom_boxplot() + 
+  facet_wrap( ~ season)
+
+olympics_medals %>%
+  filter(height >= lower & height <= upper) %>%
+  ggplot(mapping = aes(x = height, fill = season)) + 
+  geom_density(alpha = 0.5) + 
+  facet_wrap( ~ medal, 
+              ncol = 1)
+
+olympics_medals %>%
+  filter(height >= lower & height <= upper) %>%
+  group_by(season, medal) %>%
+  summarise(avg = mean(height),
+            med = median(height))
+
+
+olympics_medals %>%
+  filter(height >= lower & height <= upper) %>%
+  group_by(season) %>%
+  summarise(avg = mean(height),
+            med = median(height))
+
+
+```
+*  Very few outliers in winter olympics, a lot in summer on both ends of the distribution
+*  Remove outliers using Q1/Q3 -/+ 1.5IQR
+*  Range of heights greater for Summer Olympics athletes than Winter
+*  Average height slightly larger for Summer Olympics (178.0) than Winter (175.6)
+*  For each medal, the height distributions are close to normal in both seasons, with differences between mean and median of at most 1.1 cm
+
+
+
+
+
+``` {r}
+
+olympics_medals %>% 
+  ggplot(mapping = aes(x=weight)) + 
+  geom_boxplot() + 
+  facet_wrap( ~ medal,
+              scales = "free",
+              ncol = 1)
+
+```
