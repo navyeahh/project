@@ -19,6 +19,7 @@ library(tidyverse)
 library(readr)
 library(dplyr)
 library(janitor)
+library(tidymodels)
 
 ```
 
@@ -284,5 +285,186 @@ filteredW %>%
 
 
 
+
+```{r}
+olympics %>%
+  group_by(year, sex) %>%
+  summarise(count = n(), .groups = 'drop') %>% 
+  group_by(year) %>% 
+  mutate(percentage = count / sum(count) * 100) %>%
+  ggplot(mapping = aes(x = year,  y = percentage, fill = sex)) + 
+  geom_line() +
+  labs(
+    title = "Percentage of Male and Female Athletes Over the Years",
+    x = "Year",
+    y = "Percentage",
+    colour = "Gender"
+  ) 
+   
+
+
+```
+
+
+
+```{r}
+
+# Load the dataset (adjust the file path as needed)
+olympics_data <- olympics
+
+# Data preparation: Aggregate medals by country and year
+medals_data <- olympics_data %>%
+  filter(!is.na(medal)) %>% # Keep only rows with medals
+  group_by(year, team) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age, na.rm = TRUE), # Average age of athletes
+    avg_height = mean(height, na.rm = TRUE), # Average height
+    avg_weight = mean(weight, na.rm = TRUE), # Average weight
+    .groups = 'drop'
+  ) %>%
+  mutate(
+    avg_age = ifelse(is.na(avg_age), mean(avg_age, na.rm = TRUE), avg_age),
+    avg_height = ifelse(is.na(avg_height), mean(avg_height, na.rm = TRUE), avg_height),
+    avg_weight = ifelse(is.na(avg_weight), mean(avg_weight, na.rm = TRUE), avg_weight)
+  )
+
+# Split data into training and testing sets
+set.seed(1114)
+split <- initial_split(medals_data, prop = 0.8)
+train_data <- training(split)
+test_data <- testing(split)
+
+# Define a recipe for preprocessing
+medals_recipe <- recipe(total_medals ~ num_athletes + avg_age + avg_height + avg_weight + year, 
+                        data = train_data) %>%
+  step_normalize(all_numeric_predictors()) %>% # Normalize numeric predictors
+  step_poly(year, degree = 2)           # Polynomial term for avg_age
+
+# Define a model (e.g., Linear Regression)
+linear_model <- linear_reg() %>%
+  set_engine("lm")
+
+# Create a workflow
+medals_workflow <- workflow() %>%
+  add_recipe(medals_recipe) %>%
+  add_model(linear_model)
+
+# Train the workflow
+trained_workflow <- fit(medals_workflow, data = train_data)
+
+# Evaluate the model on test data
+predictions <- predict(trained_workflow, new_data = test_data) %>%
+  bind_cols(test_data)
+
+# Calculate metrics
+metrics <- metrics(predictions, truth = total_medals, estimate = .pred)
+print(metrics)
+
+# Plot actual vs predicted values
+ggplot(predictions, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+
+tidy(trained_workflow)
+
+```
+
+
+
+```{r}
+plot6 <- ggplot(medals_data, aes(x = num_athletes, y = total_medals)) +
+  geom_point() +
+  geom_smooth(method = "lm", col = "red", se = FALSE) +
+  labs(title = "Medals vs Number of Athletes",
+       x = "Number of Athletes",
+       y = "Total Medals") +
+  theme_minimal()
+
+# Aggregating data by year for num_athletes, avg_age, avg_height, and avg_weight
+athletes_by_year <- olympics %>%
+  group_by(year) %>%
+  summarise(
+    num_athletes = n_distinct(id),        # Number of unique athletes per year
+    avg_age = mean(age, na.rm = TRUE),     # Average age of athletes per year
+    avg_height = mean(height, na.rm = TRUE), # Average height of athletes per year
+    avg_weight = mean(weight, na.rm = TRUE), # Average weight of athletes per year
+    .groups = 'drop'
+  )
+
+# Create plot for number of athletes by year
+plot1 <- ggplot(athletes_by_year, aes(x = year, y = num_athletes)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(title = "Number of Athletes by Year",
+       x = "Year",
+       y = "Number of Athletes") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotating x-axis labels
+
+# Create plot for average age by year
+plot2 <- ggplot(athletes_by_year, aes(x = year, y = avg_age)) +
+  geom_line(color = "green") +
+  geom_point(color = "orange") +
+  labs(title = "Average Age of Athletes by Year",
+       x = "Year",
+       y = "Average Age") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotating x-axis labels
+
+# Create plot for average height by year
+plot3 <- ggplot(athletes_by_year, aes(x = year, y = avg_height)) +
+  geom_line(color = "purple") +
+  geom_point(color = "yellow") +
+  labs(title = "Average Height of Athletes by Year",
+       x = "Year",
+       y = "Average Height (cm)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotating x-axis labels
+
+# Create plot for average weight by year
+plot4 <- ggplot(athletes_by_year, aes(x = year, y = avg_weight)) +
+  geom_line(color = "brown") +
+  geom_point(color = "pink") +
+  labs(title = "Average Weight of Athletes by Year",
+       x = "Year",
+       y = "Average Weight (kg)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotating x-axis labels
+
+
+
+
+plot5 <- ggplot(
+  data = olympics %>% 
+  filter(season == "Winter") %>%
+  group_by(year) %>%
+  summarise(total_medals = n(), .groups = 'drop'), 
+  aes(x = year, y = total_medals)) +
+  geom_point() +
+  geom_smooth(method = "lm", col = "purple", se = FALSE) +
+  geom_smooth(method = "gam", col = "green", se = FALSE) +
+  labs(title = "Total Medals Won by All Teams by Year",
+       x = "Year",
+       y = "Total Medals")
+    
+```
+
+* initial model predicts number of medals based on number of athletes, avg height, avg age, avg weight and year
+* no particular relationship between num of medals and avg height, avg age, avg weight
+* more medals avarded with years
+* make new model to include interactions between year and ech of avg height, avg age, avg weight
+* might add num of medals won before as parameter
+* might look at gender or interaction between gender and year as parameter 
+* compare models
+* separate into winter and summer
 
 
