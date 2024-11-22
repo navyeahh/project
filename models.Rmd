@@ -1,0 +1,76 @@
+---
+title: "models"
+output: html_document
+date: "2024-11-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r load-lib, message = FALSE}
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(janitor)
+library(tidymodels)
+
+```
+
+
+
+```{r load-data}
+olympics <- read_csv("data/olympics.csv", show_col_types = FALSE)
+olympic_medals <- olympics %>% drop_na()
+```
+
+
+## Summer Olytmpics
+
+```{r}
+{r}
+ # Data preparation: Aggregate medals by country and year
+medals_summer <- olympic_medals %>%
+  filter(season == "Summer") %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by team and year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals # Cumulative medals before the current year
+  )
+
+
+# Split data into training and testing sets
+set.seed(1114)
+split_summer <- initial_split(medals_summer, prop = 0.8)
+train_summer <- training(split_summer)
+test_summer <- testing(split_summer)
+
+
+recipe_summer <- recipe(total_medals ~ num_athletes, data = train_summer) %>%
+  step_normalize(all_numeric_predictors())
+
+
+model_summer <- linear_reg() %>%
+  set_engine("lm")
+
+
+workflow_summer <- workflow() %>%
+  add_recipe(recipe_summer) %>%
+  add_model(model_summer)
+
+```
+
+
+
+
