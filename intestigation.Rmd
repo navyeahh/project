@@ -461,10 +461,12 @@ plot5 <- ggplot(
 * initial model predicts number of medals based on number of athletes, avg height, avg age, avg weight and year
 * no particular relationship between num of medals and avg height, avg age, avg weight
 * more medals avarded with years
-* make new model to include interactions between year and ech of avg height, avg age, avg weight
+* make new model to include interactions between year and each of avg height, avg age, avg weight
 * might add num of medals won before as parameter
 * might look at gender or interaction between gender and year as parameter 
 * compare models
 * separate into winter and summer
+
+
 
 
