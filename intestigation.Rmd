@@ -467,6 +467,57 @@ plot5 <- ggplot(
 * compare models
 * separate into winter and summer
 
+``` {r}
+olympics_medals %>%
+  count(city)
 
+olympics_medals %>%
+  mutate(
+   host_country = case_when(
+     city == "Albertville" ~ "FRA",
+     city == "Amsterdam" ~ "NED",
+     city == "Antwerpen" ~ "BEL",
+     city == "Athina" ~ "GRE",
+     city == "Atlanta" ~ "USA", 
+     city == "Barcelona" ~ "ESP",
+     city == "Beijing" ~ "CHN",
+     city == "Berlin" ~ "GER",
+     city == "Calgary" ~ "CAN",
+     city == "Chamonix" ~ "FRA",
+     city == "Cortina d'Ampezzo" ~ "ITA",
+     city == "Garmisch-Partenkirchen" ~ "GER",
+     city == "Grenoble" ~ "FRA",
+     city == "Helsinki" ~ "FIN",
+     city == "Innsbruck" ~ "AUT",
+     city == "Lake Placid" ~ "USA",
+     city == "Lillehammer" ~ "NOR",
+     city == "London" ~ "GBR",
+     city == "Los Angeles" ~ "USA",
+     city == "Melbourne" ~ "AUS",
+     city == "Mexico City" ~ "MEX",
+     city == "Montreal" ~ "CAN",
+     city == "Moskva" ~ "RUS",
+     city == "Munich" ~ "GER",
+     city == "Nagano" ~ "JPN",
+     city == "Oslo" ~ "NOR",
+     city == "Paris" ~ "FRA",
+     city == "Rio De Janeiro" ~ "BRA",
+     city == "Roma" ~ "ITA",
+     city == "Salt Lake City" ~ "USA",
+     city == "Sankt Moritz" ~ "SUI",
+     city == "Sapporo" ~ "JPN",
+     city == "Sarajevo" ~ "BIH",
+     city == "Seoul" ~ "KOR",
+     city == "Sochi" ~ "RUS",
+     city == "Squaw Valley" ~ "USA",
+     city == "St. Louis" ~ "USA",
+     city == "Stockholm" ~ "SWE",
+     city == "Sydney" ~ "AUS",
+     city == "Tokyo" ~ "JPN",
+     city == "Torino" ~ "ITA",
+     city == "Vancouver" ~ "CAN"
+     )
+  )
+```
 
 
