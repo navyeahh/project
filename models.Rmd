@@ -21,10 +21,10 @@ library(tidymodels)
 
 
 
-```{r load-data}
+```{r load-data, echo=FALSE}
 olympics <- read_csv("data/olympics.csv", show_col_types = FALSE)
 olympic_medals <- olympics %>% 
-  drop_na() %>%
+  filter(!is.na(medal)) %>%
   mutate(
    host_country = case_when(
      city == "Albertville" ~ "FRA",
@@ -74,7 +74,7 @@ olympic_medals <- olympics %>%
 ```
 
 
-```{r}
+```{r , echo=FALSE}
 # Prepare data
 medals_summer <- olympic_medals %>%
   filter(season == "Summer") %>%
@@ -88,10 +88,16 @@ medals_summer <- olympic_medals %>%
     is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
     .groups = 'drop'
   ) %>%
-  arrange(year) %>% # Arrange by team and year for cumulative calculation
+  mutate(
+    avg_age = ifelse(is.na(avg_age), mean(avg_age, na.rm = TRUE), avg_age),
+    avg_height = ifelse(is.na(avg_height), mean(avg_height, na.rm = TRUE), avg_height),
+    avg_weight = ifelse(is.na(avg_weight), mean(avg_weight, na.rm = TRUE), avg_weight)) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
   group_by(noc) %>%
   mutate(
-    medals_before = cumsum(total_medals) - total_medals)
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(year = as.factor(year), is_host = as.factor(is_host))
 
 
 # Split data into training and testing sets
@@ -108,14 +114,127 @@ test_summer <- testing(split_summer)
 ## Test Plots
 ```{r}
 medals_summer %>%
-  ggplot(mapping = aes(x = year, y = num_athletes)) +
+  ggplot(mapping = aes(x = num_athletes, y = total_medals)) +
   geom_point() +
   geom_smooth(method = "lm")
 
 
+medals_summer %>%
+  group_by(year) %>%
+  summarise(total_med = n(), .groups = 'drop') %>%
+  ggplot(mapping = aes(x = year, y = total_med)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+
+noc_medals <- function(noc_in){medals_summer %>% 
+  filter(noc == noc_in) %>%
+  ggplot(mapping = aes(x = year, y = total_medals)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+}
+
 ```
 
-## Summer Olytmpics
+
+
+
+
+
+```{r, echo=FALSE}
+
+# Function to fit the model on a single subset and return adjusted R-squared
+fit_model_for_subset <- function(subset, data) {
+  # Check if the subset is empty
+  if (length(subset) == 0) {
+    return("Empty set of predictors not allowed") 
+  }
+  
+  # Create formula dynamically from the subset
+  formula <- as.formula(paste("total_medals ~", paste(subset, collapse = " + ")))
+  
+  # Define the recipe for preprocessing
+  recipe_sub <- recipe(formula, data = data) %>%
+    step_dummy(all_nominal()) %>%   # Create dummy variables for factors
+    step_normalize(all_numeric_predictors())  # Normalise numeric predictors
+  
+  # Define the linear regression model
+  model <- linear_reg() %>%
+    set_engine("lm")
+  
+  # Create the workflow
+  workflow_sub <- workflow() %>%
+    add_recipe(recipe_sub) %>%
+    add_model(model)
+  
+  # Fit the model
+  fit_sub <- fit(workflow_sub, data = data)
+  
+  # Extract adjusted R-squared
+  fit_summary <- glance(fit_sub)
+  adj_r_squared <- fit_summary$adj.r.squared
+  
+  return(adj_r_squared)
+}
+
+# Function to evaluate all subsets and return adjusted R-squared values
+evaluate_all_subsets <- function(all_subsets, data) {
+  results <- data.frame(subset = character(), adj_r_squared = numeric())  # Empty dataframe to store results
+  
+  # Loop through all subsets (including the empty set)
+  for (subset in all_subsets) {
+    # Call the fit_model_for_subset function for each subset
+    adj_r_squared <- fit_model_for_subset(subset, data)
+    
+    # Store the subset and the corresponding adj R-squared in the results
+    results <- rbind(results, data.frame(subset = paste(subset, collapse = ", "), adj_r_squared = format(adj_r_squared, scientific = FALSE)))
+  }
+  
+  # Return the results
+  return(results)
+}
+
+
+```
+
+
+
+
+```{r, echo=FALSE}
+
+# Example predictors
+predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
+
+# Function to compute the powerset (excluding the empty set)
+powerset <- function(set) {
+  n <- length(set)
+  subsets <- unlist(lapply(1:n, function(k) combn(set, k, simplify = FALSE)), recursive = FALSE)
+  
+  # Filter out the empty set
+  subsets <- subsets[sapply(subsets, length) > 0]
+  
+  return(subsets)
+}
+
+
+# Generate the powerset (including the empty set)
+all_subsets <- powerset(predictors)
+
+# Apply evaluate_all_subsets() to all subsets
+results <- evaluate_all_subsets(all_subsets, train_summer) %>%
+    arrange(desc(adj_r_squared))
+```
+
+
+
+```{r}
+head(results)
+
+```
+
+
+## Summer Olympics
 
 ```{r}
 
@@ -123,16 +242,38 @@ model <- linear_reg() %>%
   set_engine("lm")
 
 
-recipe_s1 <- recipe(total_medals ~ num_athletes, data = train_summer) %>%
+recipe_s1 <- recipe(total_medals ~ num_athletes + avg_height + year,
+                    data = train_summer) %>%
+  step_dummy(all_nominal()) %>%
   step_normalize(all_numeric_predictors())
 
 
-workflow_summer <- workflow() %>%
-  add_recipe(recipe_summer) %>%
-  add_model(model_summer)
+workflow_s1 <- workflow() %>%
+  add_recipe(recipe_s1) %>%
+  add_model(model)
 
+fit_s1 <- fit(workflow_s1, data = train_summer)
+
+tidy(fit_s1)
+glance(fit_s1)
+
+
+pred_s1 <- predict(fit_s1, test_summer) %>%
+  bind_cols(test_summer) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+ggplot(pred_s1, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_s1
 ```
-
-
 
 
