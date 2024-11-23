@@ -23,15 +23,59 @@ library(tidymodels)
 
 ```{r load-data}
 olympics <- read_csv("data/olympics.csv", show_col_types = FALSE)
-olympic_medals <- olympics %>% drop_na()
+olympic_medals <- olympics %>% 
+  drop_na() %>%
+  mutate(
+   host_country = case_when(
+     city == "Albertville" ~ "FRA",
+     city == "Amsterdam" ~ "NED",
+     city == "Antwerpen" ~ "BEL",
+     city == "Athina" ~ "GRE",
+     city == "Atlanta" ~ "USA", 
+     city == "Barcelona" ~ "ESP",
+     city == "Beijing" ~ "CHN",
+     city == "Berlin" ~ "GER",
+     city == "Calgary" ~ "CAN",
+     city == "Chamonix" ~ "FRA",
+     city == "Cortina d'Ampezzo" ~ "ITA",
+     city == "Garmisch-Partenkirchen" ~ "GER",
+     city == "Grenoble" ~ "FRA",
+     city == "Helsinki" ~ "FIN",
+     city == "Innsbruck" ~ "AUT",
+     city == "Lake Placid" ~ "USA",
+     city == "Lillehammer" ~ "NOR",
+     city == "London" ~ "GBR",
+     city == "Los Angeles" ~ "USA",
+     city == "Melbourne" ~ "AUS",
+     city == "Mexico City" ~ "MEX",
+     city == "Montreal" ~ "CAN",
+     city == "Moskva" ~ "RUS",
+     city == "Munich" ~ "GER",
+     city == "Nagano" ~ "JPN",
+     city == "Oslo" ~ "NOR",
+     city == "Paris" ~ "FRA",
+     city == "Rio de Janeiro" ~ "BRA",
+     city == "Roma" ~ "ITA",
+     city == "Salt Lake City" ~ "USA",
+     city == "Sankt Moritz" ~ "SUI",
+     city == "Sapporo" ~ "JPN",
+     city == "Sarajevo" ~ "BIH",
+     city == "Seoul" ~ "KOR",
+     city == "Sochi" ~ "RUS",
+     city == "Squaw Valley" ~ "USA",
+     city == "St. Louis" ~ "USA",
+     city == "Stockholm" ~ "SWE",
+     city == "Sydney" ~ "AUS",
+     city == "Tokyo" ~ "JPN",
+     city == "Torino" ~ "ITA",
+     city == "Vancouver" ~ "CAN"
+     )) 
+
 ```
 
 
-## Summer Olytmpics
-
 ```{r}
-{r}
- # Data preparation: Aggregate medals by country and year
+# Prepare data
 medals_summer <- olympic_medals %>%
   filter(season == "Summer") %>%
   group_by(year, noc) %>% # Group by year and team (country)
@@ -41,13 +85,13 @@ medals_summer <- olympic_medals %>%
     avg_age = mean(age), # Average age of athletes
     avg_height = mean(height), # Average height
     avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
     .groups = 'drop'
   ) %>%
   arrange(year) %>% # Arrange by team and year for cumulative calculation
   group_by(noc) %>%
   mutate(
-    medals_before = cumsum(total_medals) - total_medals # Cumulative medals before the current year
-  )
+    medals_before = cumsum(total_medals) - total_medals)
 
 
 # Split data into training and testing sets
@@ -57,12 +101,30 @@ train_summer <- training(split_summer)
 test_summer <- testing(split_summer)
 
 
-recipe_summer <- recipe(total_medals ~ num_athletes, data = train_summer) %>%
-  step_normalize(all_numeric_predictors())
+```
 
 
-model_summer <- linear_reg() %>%
+
+## Test Plots
+```{r}
+medals_summer %>%
+  ggplot(mapping = aes(x = year, y = num_athletes)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+```
+
+## Summer Olytmpics
+
+```{r}
+
+model <- linear_reg() %>%
   set_engine("lm")
+
+
+recipe_s1 <- recipe(total_medals ~ num_athletes, data = train_summer) %>%
+  step_normalize(all_numeric_predictors())
 
 
 workflow_summer <- workflow() %>%
