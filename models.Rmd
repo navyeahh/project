@@ -100,7 +100,7 @@ all_subsets <- powerset(predictors)
 ```{r}
 
 # Function to fit the model on a single subset and return adjusted R-squared
-fit_model_for_subset <- function(subset, data) {
+fit_model_for_subset <- function(subset, train_data, test_data) {
   # Check if the subset is empty
   if (length(subset) == 0) {
     return("Empty set of predictors not allowed") 
@@ -110,7 +110,7 @@ fit_model_for_subset <- function(subset, data) {
   formula <- as.formula(paste("total_medals ~", paste(subset, collapse = " + ")))
   
   # Define the recipe for preprocessing
-  recipe_sub <- recipe(formula, data = data) %>%
+  recipe_sub <- recipe(formula, data = train_data) %>%
     step_dummy(all_nominal()) %>%   # Create dummy variables for factors
     step_normalize(all_numeric_predictors())  # Normalise numeric predictors
   
@@ -124,7 +124,7 @@ fit_model_for_subset <- function(subset, data) {
     add_model(model)
   
   # Fit the model
-  fit_sub <- fit(workflow_sub, data = data)
+  fit_sub <- fit(workflow_sub, data = train_data)
   
   # Extract adjusted R-squared
   fit_summary <- glance(fit_sub)
@@ -253,6 +253,8 @@ ggplot(pred_s1, aes(x = total_medals, y = .pred)) +
   theme_minimal()
 
 pred_s1
+
+rmse(pred_s1, truth = total_medals, estimate = .pred)
 ```
 
 
@@ -296,6 +298,8 @@ ggplot(pred_s2, aes(x = total_medals, y = .pred)) +
   theme_minimal()
 
 pred_s2
+
+rmse(pred_s2, truth = total_medals, estimate = .pred)
 ```
 * note that top 1 has adjusted R squared = 0.99226 to 5 sf
 * top 4 - 0.9923 to 4 sf
@@ -359,6 +363,8 @@ pred_2016 %>%
   filter(total_medals > 25) %>%
   summarise(avg_error = mean(pct_error))
  
+rmse(pred_2016, truth = total_medals, estimate = .pred)
+
 ```
 
 * predicted 17% of countries with zero error in 2016 Summer Olympics
@@ -466,6 +472,8 @@ ggplot(pred_w1, aes(x = total_medals, y = .pred)) +
   theme_minimal()
 
 pred_w1
+
+rmse(pred_w1, truth = total_medals, estimate = .pred)
 ```
 
 
@@ -511,6 +519,8 @@ ggplot(pred_w2, aes(x = total_medals, y = .pred)) +
   theme_minimal()
 
 pred_w2
+
+rmse(pred_w2, truth = total_medals, estimate = .pred)
 ```
 * note that top 2 have adjusted R squared = 0.9786 to 4 sf
 * top 5 - 0.979 to 3 sf
@@ -572,6 +582,8 @@ pred_2014 %>%
 pred_2014 %>%
   filter(total_medals > 10) %>%
   summarise(avg_error = mean(pct_error)) 
+
+rmse(pred_2014, truth = total_medals, estimate = .pred)
 ```
 
 * predicted 7.7% of countries with zero error in 2016 Winter Olympics
