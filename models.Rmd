@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
-```{r load-lib, message = FALSE}
+```{r load-lib, message = FALSE, echo = FALSE}
 library(tidyverse)
 library(readr)
 library(dplyr)
@@ -74,75 +74,30 @@ olympic_medals <- olympics %>%
 ```
 
 
-```{r , echo=FALSE}
-# Prepare data
-medals_summer <- olympic_medals %>%
-  filter(season == "Summer") %>%
-  group_by(year, noc) %>% # Group by year and team (country)
-  summarise(
-    total_medals = n(), # Total medals won
-    num_athletes = n_distinct(id), # Number of unique athletes
-    avg_age = mean(age), # Average age of athletes
-    avg_height = mean(height), # Average height
-    avg_weight = mean(weight), # Average weight
-    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
-    .groups = 'drop'
-  ) %>%
-  mutate(
-    avg_age = ifelse(is.na(avg_age), mean(avg_age, na.rm = TRUE), avg_age),
-    avg_height = ifelse(is.na(avg_height), mean(avg_height, na.rm = TRUE), avg_height),
-    avg_weight = ifelse(is.na(avg_weight), mean(avg_weight, na.rm = TRUE), avg_weight)) %>%
-  arrange(year) %>% # Arrange by year for cumulative calculation
-  group_by(noc) %>%
-  mutate(
-    medals_before = cumsum(total_medals) - total_medals) %>%
-  ungroup() %>%
-  mutate(year = as.factor(year), is_host = as.factor(is_host))
+### General Functions
 
-
-# Split data into training and testing sets
-set.seed(1114)
-split_summer <- initial_split(medals_summer, prop = 0.8)
-train_summer <- training(split_summer)
-test_summer <- testing(split_summer)
-
-
-```
-
-
-
-## Test Plots
 ```{r}
-medals_summer %>%
-  ggplot(mapping = aes(x = num_athletes, y = total_medals)) +
-  geom_point() +
-  geom_smooth(method = "lm")
 
+# Example predictors
+predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
 
-medals_summer %>%
-  group_by(year) %>%
-  summarise(total_med = n(), .groups = 'drop') %>%
-  ggplot(mapping = aes(x = year, y = total_med)) +
-  geom_point() +
-  geom_smooth(method = "lm")
-
-
-
-noc_medals <- function(noc_in){medals_summer %>% 
-  filter(noc == noc_in) %>%
-  ggplot(mapping = aes(x = year, y = total_medals)) +
-  geom_point() +
-  geom_smooth(method = "lm")
+# Function to compute the powerset (excluding the empty set)
+powerset <- function(set) {
+  n <- length(set)
+  subsets <- unlist(lapply(1:n, function(k) combn(set, k, simplify = FALSE)), recursive = FALSE)
+  
+  # Filter out the empty set
+  subsets <- subsets[sapply(subsets, length) > 0]
+  
+  return(subsets)
 }
 
+# Generate the powerset (including the empty set)
+all_subsets <- powerset(predictors)
+
 ```
 
-
-
-
-
-
-```{r, echo=FALSE}
+```{r}
 
 # Function to fit the model on a single subset and return adjusted R-squared
 fit_model_for_subset <- function(subset, data) {
@@ -195,46 +150,70 @@ evaluate_all_subsets <- function(all_subsets, data) {
   return(results)
 }
 
+```
+
+
+
+### Summer Olympics
+
+* exclude 2016 Summer Olympics, use it later to test
+```{r , echo=FALSE}
+# Prepare data
+medals_summer <- olympic_medals %>%
+  filter(season == "Summer") %>%
+  group_by(year) %>%  # Group by year
+  mutate(
+    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
+    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
+    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
+  ) %>%
+  ungroup() %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(is_host = as.factor(is_host))
+
+
+# Split data into training and testing sets
+medals_summer_new <- medals_summer %>%
+  filter(year!="2016")
+set.seed(1114)
+split_summer <- initial_split(medals_summer_new, prop = 0.8)
+train_summer <- training(split_summer)
+test_summer <- testing(split_summer)
+
 
 ```
 
 
 
-
-```{r, echo=FALSE}
-
-# Example predictors
-predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
-
-# Function to compute the powerset (excluding the empty set)
-powerset <- function(set) {
-  n <- length(set)
-  subsets <- unlist(lapply(1:n, function(k) combn(set, k, simplify = FALSE)), recursive = FALSE)
-  
-  # Filter out the empty set
-  subsets <- subsets[sapply(subsets, length) > 0]
-  
-  return(subsets)
-}
-
-
-# Generate the powerset (including the empty set)
-all_subsets <- powerset(predictors)
-
-# Apply evaluate_all_subsets() to all subsets
-results <- evaluate_all_subsets(all_subsets, train_summer) %>%
-    arrange(desc(adj_r_squared))
-```
-
-
+* get top performing models, arranged by the value of adjusted R squared
 
 ```{r}
-head(results)
+
+# Apply evaluate_all_subsets() to all subsets
+results_summer <- evaluate_all_subsets(all_subsets, train_summer) %>%
+    arrange(desc(adj_r_squared))
+
+head(results_summer)
 
 ```
 
 
-## Summer Olympics
+
+* examine model with all predictors
 
 ```{r}
 
@@ -242,7 +221,7 @@ model <- linear_reg() %>%
   set_engine("lm")
 
 
-recipe_s1 <- recipe(total_medals ~ num_athletes + avg_height + year,
+recipe_s1 <- recipe(total_medals ~ num_athletes + medals_before + avg_age + avg_height + avg_weight + year + is_host,
                     data = train_summer) %>%
   step_dummy(all_nominal()) %>%
   step_normalize(all_numeric_predictors())
@@ -276,4 +255,334 @@ ggplot(pred_s1, aes(x = total_medals, y = .pred)) +
 pred_s1
 ```
 
+
+* can do even better
+* examine best model based on adjusted R squared
+
+```{r}
+model <- linear_reg() %>%
+  set_engine("lm")
+
+
+recipe_s2 <- recipe(total_medals ~ year + num_athletes + medals_before + is_host + avg_height,
+                    data = train_summer) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric_predictors())
+
+
+workflow_s2 <- workflow() %>%
+  add_recipe(recipe_s2) %>%
+  add_model(model)
+
+fit_s2 <- fit(workflow_s2, data = train_summer)
+
+tidy(fit_s2)
+glance(fit_s2)
+
+
+pred_s2 <- predict(fit_s2, test_summer) %>%
+  bind_cols(test_summer) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+ggplot(pred_s2, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_s2
+```
+* note that top 1 has adjusted R squared = 0.99226 to 5 sf
+* top 4 - 0.9923 to 4 sf
+* top 64 - 0.929 to 3 sf
+* no big differences, so best models will give pretty much the same values for predicted number of medals (differences likely to be more visible when number of medals is low)
+
+
+
+
+* compare predicted and actual total medals using 2016 Summer Olympics
+
+```{r}
+summer_2016 <- olympic_medals %>%
+  filter(season == "Summer", year == "2016") %>%
+  group_by(year) %>%  # Group by year
+  mutate(
+    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
+    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
+    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
+  ) %>%
+  ungroup() %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(is_host = as.factor(is_host))
+
+pred_2016 <- predict(fit_s2, summer_2016) %>%
+  bind_cols(summer_2016) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+pred_2016 %>% slice_head(n = 10)
+
+pred_2016 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_2016 %>%
+  filter(total_medals > 25) %>%
+  summarise(avg_error = mean(pct_error))
+ 
+```
+
+* predicted 17% of countries with zero error in 2016 Summer Olympics
+* largest errors when few medals
+* for teams with more than 25 medal, average error is 5.3%
+
+
+
+
+### Winter Olympics
+
+```{r , echo=FALSE}
+
+# Prepare data
+medals_winter <- olympic_medals %>%
+  filter(season == "Winter") %>%
+  group_by(year) %>%  # Group by year
+  mutate(
+    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
+    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
+    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
+  ) %>%
+  ungroup() %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(is_host = as.factor(is_host))
+
+
+# Split data into training and testing sets
+medals_winter_new <- medals_winter %>%
+  filter(year!="2014")
+set.seed(1114)
+split_winter <- initial_split(medals_winter_new, prop = 0.8)
+train_winter <- training(split_summer)
+test_winter <- testing(split_summer)
+
+```
+
+
+
+* get top performing models, arranged by the value of adjusted R squared
+
+```{r}
+
+# Apply evaluate_all_subsets() to all subsets
+results_winter <- evaluate_all_subsets(all_subsets, train_winter) %>%
+    arrange(desc(adj_r_squared))
+
+head(results_winter)
+
+```
+
+
+
+* examine model with all predictors
+
+```{r}
+
+model <- linear_reg() %>%
+  set_engine("lm")
+
+
+recipe_w1 <- recipe(total_medals ~ num_athletes + medals_before + avg_age + avg_height + avg_weight + year + is_host,
+                    data = train_winter) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric_predictors())
+
+
+workflow_w1 <- workflow() %>%
+  add_recipe(recipe_w1) %>%
+  add_model(model)
+
+fit_w1 <- fit(workflow_w1, data = train_winter)
+
+tidy(fit_w1)
+glance(fit_w1)
+
+
+pred_w1 <- predict(fit_w1, test_winter) %>%
+  bind_cols(test_winter) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+ggplot(pred_w1, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_w1
+```
+
+
+
+* can do even better
+* examine best model based on adjusted R squared
+
+```{r}
+
+model <- linear_reg() %>%
+  set_engine("lm")
+
+
+recipe_w2 <- recipe(total_medals ~ num_athletes + avg_height + avg_weight + year + is_host,
+                    data = train_winter) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric_predictors())
+
+
+workflow_w2 <- workflow() %>%
+  add_recipe(recipe_w2) %>%
+  add_model(model)
+
+fit_w2 <- fit(workflow_w2, data = train_winter)
+
+tidy(fit_w2)
+glance(fit_w2)
+
+
+pred_w2 <- predict(fit_w2, test_winter) %>%
+  bind_cols(test_winter) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+ggplot(pred_w2, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_w2
+```
+* note that top 2 have adjusted R squared = 0.9786 to 4 sf
+* top 5 - 0.979 to 3 sf
+* top 64 - 0.98 to 2 sf
+* no big differences, so best models will give pretty much the same values for predicted number of medals (differences likely to be more visible when number of medals is low)
+
+
+
+* compare predicted and actual total medals using 2014 Winter Olympics
+
+```{r}
+winter_2014 <- olympic_medals %>%
+  filter(season == "Winter", year == "2014") %>%
+  group_by(year) %>%  # Group by year
+  mutate(
+    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
+    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
+    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
+  ) %>%
+  ungroup() %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(is_host = as.factor(is_host))
+
+pred_2014 <- predict(fit_w2, winter_2014) %>%
+  bind_cols(winter_2014) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+pred_2014 %>% slice_head(n = 10)
+
+pred_2014 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_2014 %>%
+  filter(total_medals > 10) %>%
+  summarise(avg_error = mean(pct_error)) 
+```
+
+* predicted 7.7% of countries with zero error in 2016 Winter Olympics
+* average error for teams with more than 10 medals is 12.0%
+
+
+### Some Conclusions
+
+* year, number of athletes, being the host and average height of athletes prsent in best performing models
+* less data for Winter Olympics (started in 1924) so less accurate predictions
+* a lot of missing data for early Games, some values (age, height, weight) substituted for average values for that year and season
+* medals won before - issues with countries like Soviet Union, 	
+Czechoslovakia, East/West Germany
 
