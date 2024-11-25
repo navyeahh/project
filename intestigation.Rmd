@@ -517,7 +517,16 @@ olympics_medals %>%
      city == "Torino" ~ "ITA",
      city == "Vancouver" ~ "CAN"
      )
-  )
+  ) %>%
+  filter(host_country == noc)%>%
+  group_by(host_country) %>% 
+  summarise(count = n()) %>%
+  mutate(medals_pct = count/sum(count) * 100 ) %>%
+  arrange(desc(medals_pct))
+
+  
+
+
 ```
 
 
