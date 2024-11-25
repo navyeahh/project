@@ -471,7 +471,7 @@ plot5 <- ggplot(
 olympics_medals %>%
   count(city)
 
-olympics_medals %>%
+olympics_medals_hosts <- olympics_medals %>%
   mutate(
    host_country = case_when(
      city == "Albertville" ~ "FRA",
@@ -501,7 +501,7 @@ olympics_medals %>%
      city == "Nagano" ~ "JPN",
      city == "Oslo" ~ "NOR",
      city == "Paris" ~ "FRA",
-     city == "Rio De Janeiro" ~ "BRA",
+     city == "Rio de Janeiro" ~ "BRA",
      city == "Roma" ~ "ITA",
      city == "Salt Lake City" ~ "USA",
      city == "Sankt Moritz" ~ "SUI",
@@ -517,14 +517,9 @@ olympics_medals %>%
      city == "Torino" ~ "ITA",
      city == "Vancouver" ~ "CAN"
      )
-  ) %>%
-  filter(host_country == noc)%>%
-  group_by(host_country) %>% 
-  summarise(count = n()) %>%
-  mutate(medals_pct = count/sum(count) * 100 ) %>%
-  arrange(desc(medals_pct))
+  )
 
-  
+
 
 
 ```
