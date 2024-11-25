@@ -1,7 +1,7 @@
 ---
 title: "Olympic medals over the years"
 subtitle: "A brief analysis"
-author: "Team name <br> Max Dudik, Navya Bhamidipati"
+author: "Team 39 <br> Max Dudik, Navya Bhamidipati"
 institute: "University of Edinburgh"
 date: "`r Sys.Date()`"
 output:
@@ -47,7 +47,7 @@ knitr::opts_chunk$set(fig.retina = 3, dpi = 300, fig.width = 6, fig.asp = 0.618,
 
 #Background image
 style_xaringan(
-  title_slide_background_image = "img/olympics.jpeg"
+  title_slide_background_image = "img/olympics new.jpeg"
 )
 ```
 
@@ -63,49 +63,29 @@ class: inverse, center, middle
 
 ---
 
-# Hello World
+# Initial exploration
 
-- Click the `Knit` button to compile your presentation
+- We explored the overall athletes by team, number of teams per country per sport, medals by teams and win percentage
 
-- Make sure to commit and push all resulting files to your GitHub repo
+-- 
 
----
-
-class: inverse, middle, center
-
-# Using xaringan
-
----
-
-# xaringan
-
-- The presentation is created using the `xaringan` package
-
-- Use `---` to separate slides and `--` for incremental builds
+- Here's what we saw:
 
 --
 
-- Like this
+- The top 5 countries with the most Olympians were- USA, France, Great Britain and Germany
 
----
+--
 
-# Layouts
+- The biggest contingents by sports were- USA (Athletics), USA (Swimming), Australia (Swimming), USA (Basketball), Canada (Ice Hockey)
 
-You can use plain text
+--
 
-- or bullet points
+- The top 5 countries with the most medals were- United States, Soviet Union, Germany, Australia, Russia (can see how the data itself is slightly problematic here)
 
-.pull-left[
-or text in two columns $^*$
-]
-.pull-right[
-- like
-- this
-]
+--
 
-.footnote[
-[*] And add footnotes
-]
+- Roughly 4.9% (15% total) of athletes win a gold, silver or bronze medal each. 85% of the athletes at the Olympics have not won medals
 
 ---
 
@@ -122,20 +102,14 @@ glance(model)
 
 # Plots
 
-```{r recode-species, echo = FALSE}
-# In this chunk I'm doing a bunch of analysis that I don't want to present 
-# in my slides. But I need the resulting data frame for a plot I want to present.
-iris_modified <- iris %>%
-  mutate(Species = fct_other(Species, keep = "setosa"))
+```{r bounds, echo = FALSE}
+
+
 ```
 
-```{r plot-iris, echo = FALSE}
+```{r plot-agedist, echo = FALSE}
 # Code hidden with echo = FALSE
-# Uses modified iris dataset from previous chunk
-# Play around with height and width until you're happy with the look
-ggplot(data = iris_modified, mapping = aes(x = Sepal.Width, y = Sepal.Length, color = Species)) +
-  geom_point() + 
-  theme_minimal() # theme options: https://ggplot2.tidyverse.org/reference/ggtheme.html
+
 ```
 
 ---

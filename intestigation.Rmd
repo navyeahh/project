@@ -58,7 +58,7 @@ olympics_medals %>%
 
 # teams in sports
 olympics_medals %>%
-  count(team, sport) %>%
+  count(sport, team) %>%
   arrange(desc(n))
 
 ```
