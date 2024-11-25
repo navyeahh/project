@@ -78,7 +78,7 @@ olympic_medals <- olympics %>%
 
 ```{r}
 
-# Example predictors
+
 predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
 
 # Function to compute the powerset (excluding the empty set)
@@ -99,7 +99,7 @@ all_subsets <- powerset(predictors)
 
 ```{r}
 
-# Function to fit the model on a single subset and return adjusted R-squared
+# Function to fit the model on a single subset and return adjusted R-squared and MAE
 fit_model_for_subset <- function(subset, train_data, test_data) {
   # Check if the subset is empty
   if (length(subset) == 0) {
@@ -126,29 +126,56 @@ fit_model_for_subset <- function(subset, train_data, test_data) {
   # Fit the model
   fit_sub <- fit(workflow_sub, data = train_data)
   
-  # Extract adjusted R-squared
+  pred_sub <- predict(fit_sub, test_data) %>%
+    bind_cols(test_data) %>%
+    mutate(.pred = round(.pred)) %>%
+    mutate(.pred = if_else(.pred < 0, 0, .pred))
+  
+  # Extract adjusted R-squared and MAE
   fit_summary <- glance(fit_sub)
   adj_r_squared <- fit_summary$adj.r.squared
+  mae_value <- mae(pred_sub, truth = total_medals, estimate = .pred)$.estimate
   
-  return(adj_r_squared)
+  # Return both MAE and adjusted R-squared as a named list
+  return(list(mae = mae_value, adj_r_squared = adj_r_squared))
 }
 
-# Function to evaluate all subsets and return adjusted R-squared values
-evaluate_all_subsets <- function(all_subsets, data) {
-  results <- data.frame(subset = character(), adj_r_squared = numeric())  # Empty dataframe to store results
+evaluate_all_subsets <- function(all_subsets, train_data, test_data) {
+  # Initialize an empty list to store results
+  results <- list()
   
-  # Loop through all subsets (including the empty set)
+  # Loop through all subsets
   for (subset in all_subsets) {
-    # Call the fit_model_for_subset function for each subset
-    adj_r_squared <- fit_model_for_subset(subset, data)
+    if (length(subset) == 0) {
+      # Skip empty subsets
+      next
+    }
     
-    # Store the subset and the corresponding adj R-squared in the results
-    results <- rbind(results, data.frame(subset = paste(subset, collapse = ", "), adj_r_squared = format(adj_r_squared, scientific = FALSE)))
+    # Fit the model and extract metrics
+    metrics <- fit_model_for_subset(subset, train_data, test_data)
+    
+    # Store the subset, MAE, and adjusted R-squared in the results
+    results[[length(results) + 1]] <- list(
+      subset = paste(subset, collapse = ", "),
+      mae = metrics$mae,
+      adj_r_squared = metrics$adj_r_squared
+    )
   }
   
-  # Return the results
-  return(results)
+  # Convert the list to a data frame
+  results_df <- do.call(rbind, lapply(results, as.data.frame))
+  
+  # Convert MAE and adjusted R-squared to numeric 
+  results_df$mae <- as.numeric(results_df$mae)
+  results_df$adj_r_squared <- as.numeric(results_df$adj_r_squared)
+  
+  # Arrange by ascending MAE
+  results_df <- results_df[order(results_df$mae), ]
+  
+  # Return the sorted results
+  return(results_df)
 }
+
 
 ```
 
@@ -199,16 +226,12 @@ test_summer <- testing(split_summer)
 
 
 
-* get top performing models, arranged by the value of adjusted R squared
+* get top performing models, arranged by the value of MAE
 
 ```{r}
 
 # Apply evaluate_all_subsets() to all subsets
-results_summer <- evaluate_all_subsets(all_subsets, train_summer) %>%
-    arrange(desc(adj_r_squared))
-
-head(results_summer)
-
+results_summer <- evaluate_all_subsets(all_subsets, train_summer, test_summer)
 ```
 
 
@@ -255,18 +278,19 @@ ggplot(pred_s1, aes(x = total_medals, y = .pred)) +
 pred_s1
 
 rmse(pred_s1, truth = total_medals, estimate = .pred)
+mae(pred_s1, truth = total_medals, estimate = .pred)
 ```
 
 
 * can do even better
-* examine best model based on adjusted R squared
+* examine best model based on MAE
 
 ```{r}
 model <- linear_reg() %>%
   set_engine("lm")
 
 
-recipe_s2 <- recipe(total_medals ~ year + num_athletes + medals_before + is_host + avg_height,
+recipe_s2 <- recipe(total_medals ~  num_athletes + medals_before + avg_height + is_host,
                     data = train_summer) %>%
   step_dummy(all_nominal()) %>%
   step_normalize(all_numeric_predictors())
@@ -300,11 +324,17 @@ ggplot(pred_s2, aes(x = total_medals, y = .pred)) +
 pred_s2
 
 rmse(pred_s2, truth = total_medals, estimate = .pred)
+mae(pred_s2, truth = total_medals, estimate = .pred)
+
+results_summer %>%
+  filter(mae < 2)%>%
+  count()
 ```
-* note that top 1 has adjusted R squared = 0.99226 to 5 sf
-* top 4 - 0.9923 to 4 sf
-* top 64 - 0.929 to 3 sf
+* note that top 2 have MAE = 1.81 to 3 sf
+* top 22 - 1.8 to 2 sf
+* top 64 - 2 to 1 sf
 * no big differences, so best models will give pretty much the same values for predicted number of medals (differences likely to be more visible when number of medals is low)
+* half of the models have average deviation from the real number of total medals won of 2 medals
 
 
 
@@ -312,31 +342,8 @@ rmse(pred_s2, truth = total_medals, estimate = .pred)
 * compare predicted and actual total medals using 2016 Summer Olympics
 
 ```{r}
-summer_2016 <- olympic_medals %>%
-  filter(season == "Summer", year == "2016") %>%
-  group_by(year) %>%  # Group by year
-  mutate(
-    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
-    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
-    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
-  ) %>%
-  ungroup() %>%
-  group_by(year, noc) %>% # Group by year and team (country)
-  summarise(
-    total_medals = n(), # Total medals won
-    num_athletes = n_distinct(id), # Number of unique athletes
-    avg_age = mean(age), # Average age of athletes
-    avg_height = mean(height), # Average height
-    avg_weight = mean(weight), # Average weight
-    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
-    .groups = 'drop'
-  ) %>%
-  arrange(year) %>% # Arrange by year for cumulative calculation
-  group_by(noc) %>%
-  mutate(
-    medals_before = cumsum(total_medals) - total_medals) %>%
-  ungroup() %>%
-  mutate(is_host = as.factor(is_host))
+summer_2016 <- medals_summer %>%
+  filter(year == "2016")
 
 pred_2016 <- predict(fit_s2, summer_2016) %>%
   bind_cols(summer_2016) %>%
@@ -364,12 +371,16 @@ pred_2016 %>%
   summarise(avg_error = mean(pct_error))
  
 rmse(pred_2016, truth = total_medals, estimate = .pred)
+mae(pred_2016, truth = total_medals, estimate = .pred)
+
+pred_2016 %>%
+  summarise(avg = mean(total_medals))
 
 ```
 
-* predicted 17% of countries with zero error in 2016 Summer Olympics
 * largest errors when few medals
-* for teams with more than 25 medal, average error is 5.3%
+* for teams with more than 25 medal, average error is 6.8%
+* MAE is 1.8, or 7.8% of the mean (23.5), which is a reasonable fit
 
 
 
@@ -418,15 +429,15 @@ test_winter <- testing(split_summer)
 
 
 
-* get top performing models, arranged by the value of adjusted R squared
+* get top performing models, arranged by the value of MAE
 
 ```{r}
 
 # Apply evaluate_all_subsets() to all subsets
-results_winter <- evaluate_all_subsets(all_subsets, train_winter) %>%
-    arrange(desc(adj_r_squared))
+results_winter <- evaluate_all_subsets(all_subsets, train_winter, test_winter) 
 
 head(results_winter)
+
 
 ```
 
@@ -474,12 +485,13 @@ ggplot(pred_w1, aes(x = total_medals, y = .pred)) +
 pred_w1
 
 rmse(pred_w1, truth = total_medals, estimate = .pred)
+mae(pred_w1, truth = total_medals, estimate = .pred)
 ```
 
 
 
 * can do even better
-* examine best model based on adjusted R squared
+* examine best model based on mae
 
 ```{r}
 
@@ -487,7 +499,7 @@ model <- linear_reg() %>%
   set_engine("lm")
 
 
-recipe_w2 <- recipe(total_medals ~ num_athletes + avg_height + avg_weight + year + is_host,
+recipe_w2 <- recipe(total_medals ~ num_athletes + avg_weight + year + medals_before,
                     data = train_winter) %>%
   step_dummy(all_nominal()) %>%
   step_normalize(all_numeric_predictors())
@@ -522,41 +534,19 @@ pred_w2
 
 rmse(pred_w2, truth = total_medals, estimate = .pred)
 ```
-* note that top 2 have adjusted R squared = 0.9786 to 4 sf
-* top 5 - 0.979 to 3 sf
-* top 64 - 0.98 to 2 sf
+* note that top 5 have rmse = 3.0 to 2 sf
+* top 32 - 3.1 to 2 sf
+* top 64 - 3 to 1 sf
 * no big differences, so best models will give pretty much the same values for predicted number of medals (differences likely to be more visible when number of medals is low)
+* half of the models have average deviation from the real number of total medals won of 3 medals
 
 
 
 * compare predicted and actual total medals using 2014 Winter Olympics
 
 ```{r}
-winter_2014 <- olympic_medals %>%
-  filter(season == "Winter", year == "2014") %>%
-  group_by(year) %>%  # Group by year
-  mutate(
-    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
-    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
-    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
-  ) %>%
-  ungroup() %>%
-  group_by(year, noc) %>% # Group by year and team (country)
-  summarise(
-    total_medals = n(), # Total medals won
-    num_athletes = n_distinct(id), # Number of unique athletes
-    avg_age = mean(age), # Average age of athletes
-    avg_height = mean(height), # Average height
-    avg_weight = mean(weight), # Average weight
-    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
-    .groups = 'drop'
-  ) %>%
-  arrange(year) %>% # Arrange by year for cumulative calculation
-  group_by(noc) %>%
-  mutate(
-    medals_before = cumsum(total_medals) - total_medals) %>%
-  ungroup() %>%
-  mutate(is_host = as.factor(is_host))
+winter_2014 <- medals_winter %>%
+  filter(year == "2014")
 
 pred_2014 <- predict(fit_w2, winter_2014) %>%
   bind_cols(winter_2014) %>%
@@ -584,17 +574,38 @@ pred_2014 %>%
   summarise(avg_error = mean(pct_error)) 
 
 rmse(pred_2014, truth = total_medals, estimate = .pred)
+mae(pred_2014, truth = total_medals, estimate = .pred)
+
+pred_2014 %>%
+  summarise(avg = mean(total_medals))
+
+
+results_winter %>%
+  filter(mae < 2)%>%
+  count()
 ```
 
-* predicted 7.7% of countries with zero error in 2016 Winter Olympics
-* average error for teams with more than 10 medals is 12.0%
+* average error for teams with more than 10 medals is 18.4%
+* rmse is 5.2, or 22.6% of mean, which is a worse fit than for Summer Olympics
+
+
+
+
+
+
+
+
+
 
 
 ### Some Conclusions
 
-* year, number of athletes, being the host and average height of athletes prsent in best performing models
+* number of athletes, as expected, is present in all models with rmse = 3 to 1 sf
+* models without nu_athletes have rmse of at least 30
 * less data for Winter Olympics (started in 1924) so less accurate predictions
 * a lot of missing data for early Games, some values (age, height, weight) substituted for average values for that year and season
 * medals won before - issues with countries like Soviet Union, 	
 Czechoslovakia, East/West Germany
+
+
 
