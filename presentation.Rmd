@@ -93,20 +93,20 @@ olympic_medals <- olympics %>%
      city == "Vancouver" ~ "CAN"
      )) 
 
+# All predictors
 predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
 
-# Function to compute the powerset (excluding the empty set)
+# Compute all subsets of a set excluding the empty one
 powerset <- function(set) {
   n <- length(set)
   subsets <- unlist(lapply(1:n, function(k) combn(set, k, simplify = FALSE)), recursive = FALSE)
   
-  # Filter out the empty set
   subsets <- subsets[sapply(subsets, length) > 0]
   
   return(subsets)
 }
 
-# Generate the powerset (including the empty set)
+
 all_subsets <- powerset(predictors)
 
 # Function to fit the model on a single subset and return adjusted R-squared and MAE
@@ -198,7 +198,7 @@ style_xaringan(
 
 class: center, middle
 
-## Can we model the likelihood of winning a medal at the Olympics? What factors can we use?
+## Can we predict the number of medals won by a team at the Olympics? What factors can we use?
 
 ---
 
@@ -210,7 +210,7 @@ class: inverse, center, middle
 
 # Initial exploration
 
-- We explored the overall athletes by team, number of teams/athletes per country per sport, medals by teams and win percentage
+- We explored the data set that includes basic bio data on athletes and medal results from Athens 1896 to Rio 2016
 
 -- 
 
@@ -218,95 +218,23 @@ class: inverse, center, middle
 
 --
 
-- The top 5 countries with the most Olympians were- USA, France, Great Britain and Germany
+- The top 5 countries with the most Olympians were: USA, France, Great Britain, Italy, and Germany
 
 --
 
-- The biggest contingents by sports were- USA (Athletics), USA (Swimming), Australia (Swimming), USA (Basketball), Canada (Ice Hockey)
+- The biggest contingents by sports were: USA (Athletics), USA (Swimming), Australia (Swimming), USA (Basketball), Canada (Ice Hockey)
 
 --
 
-- The top 5 countries with the most medals were- United States, Soviet Union, Germany, Australia, Russia (can see how the data itself is slightly problematic here)
+- The top 5 countries with the most medals were: United States, Soviet Union, Germany, Australia, Russia (can see how the data itself is slightly problematic here)
 
 --
 
 - Roughly 4.9% (15% total) of athletes win a gold, silver or bronze medal each. 85% of the athletes at the Olympics have not won medals
 
 ---
-# What we did?
-
-- We split the data into Winter and Summer and identified 7 predictors 
-
---
-
-- These were- average age, average height, average weight, previous medals, number of athletes, year of the Olympics and if they were the host country.
-
----
-
-# Why?
-
-```{r, echo = FALSE}
-olympics_medals <- olympics %>%
-  drop_na()
-
-bounds <- function(variable, s) { 
-  # find lower and upper quartiles
-  Q1 = as.numeric(quantile((olympics_medals%>%filter(season==s))[[variable]], 0.25))
-  Q3 = as.numeric(quantile((olympics_medals%>%filter(season==s))[[variable]], 0.75))
-
-  # find interquartile range
-  IQR <-  Q3 - Q1
-
-  # find lower and upper bounds to filter out outliers
-  lower = Q1 - 1.5 * IQR
-  upper = Q3 + 1.5 * IQR
-  
-  # return values
-  return(list(lower=lower, upper=upper))
-}
-# find upper and lower bounds of age for each season separately
-bsW = bounds("age", "Winter")
-lowerW = bsW$lower
-upperW = bsW$upper
-
-bsS = bounds("age", "Summer")
-lowerS = bsS$lower
-upperS = bsS$upper
-
-# create new dataset by dynamically filtering out entries that are below/above lower/upper bounds
-filteredA <- olympics_medals %>%
-  mutate(
-    lower = ifelse(season == "Winter", lowerW, lowerS),
-    upper = ifelse(season == "Winter", upperW, upperS)
-  ) %>%
-  filter(age >= lower & age <= upper)
-
-filteredA %>%
-  ggplot(mapping = aes(y = age, x = medal)) + 
-  geom_boxplot() + 
-  facet_wrap( ~ season)
-```
----
-# Why?
-```{r, echo = FALSE}
-filteredA %>%
-  ggplot(mapping = aes(x = age, fill = season)) + 
-  geom_density(alpha = 0.5) + 
-  facet_wrap( ~ medal, 
-              ncol = 1)
-```
----
-# Why?
-```{r, echo = FALSE}
-filteredA %>% 
-  ggplot(mapping = aes(x = age, fill = medal)) + 
-  geom_density(alpha = 0.5) 
-```
----
-
-# Summer Olympics
-
-```{r, echo = FALSE}
+# What we did
+```{r, echo=FALSE}
 # Prepare data
 medals_summer <- olympic_medals %>%
   filter(season == "Summer") %>%
@@ -319,6 +247,7 @@ medals_summer <- olympic_medals %>%
   ungroup() %>%
   group_by(year, noc) %>% # Group by year and team (country)
   summarise(
+    season = first(season),
     total_medals = n(), # Total medals won
     num_athletes = n_distinct(id), # Number of unique athletes
     avg_age = mean(age), # Average age of athletes
@@ -334,7 +263,95 @@ medals_summer <- olympic_medals %>%
   ungroup() %>%
   mutate(is_host = as.factor(is_host))
 
+# Prepare data
+medals_winter <- olympic_medals %>%
+  filter(season == "Winter") %>%
+  group_by(year) %>%  # Group by year
+  mutate(
+    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
+    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
+    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
+  ) %>%
+  ungroup() %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    season = first(season),
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(is_host = as.factor(is_host))
+```
 
+- We split the data into Winter and Summer and identified 7 predictors 
+
+--
+
+- These were- average age, average height, average weight, previous medals, number of athletes, year of the Olympics and if they were the host country.
+
+---
+
+# Why?
+
+```{r, echo = FALSE}
+all_medals <- suppressMessages(full_join(medals_summer, medals_winter))
+
+
+all_medals %>%
+  group_by(year, season) %>%
+  summarise(total_medals_per_year = sum(total_medals), .groups = "drop") %>%  
+  ggplot(mapping = aes(x = year, y = total_medals_per_year, colour = season)) +  #
+  geom_point() +  
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(group = season)) +  
+  labs(title = "Total Medals Won Each Year",
+       subtitle = "by Season",
+       x = "Year",
+       y = "Total Medals") +
+  theme_minimal() +  # Apply minimal theme for clarity
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+---
+# Why?
+```{r, echo = FALSE}
+all_medals %>%
+  group_by(year, season) %>%
+  summarise(mean_h = mean(avg_height), .groups = "drop") %>%  
+  ggplot(mapping = aes(x = year, y = mean_h, colour = season)) +  #
+  geom_point() +  
+  labs(title = "Average Height of Athletes Each year",
+       subtitle = "by Season",
+       x = "Year",
+       y = "Average Height") +
+  theme_minimal() +  # Apply minimal theme for clarity
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+---
+# Why?
+```{r, echo = FALSE}
+all_medals %>%
+  filter(medals_before > 700) %>%
+  ggplot(mapping = aes(x=medals_before, y = total_medals)) +
+  geom_point() + 
+  labs(title = "Medals Won at Games vs Medals Won Before the Games",
+       subtitle = "for Countries with More Than 700 Medals Prior to Games",
+       x = "Medals Won Before the Games",
+       y = "Medals Won at Games") +
+  theme_minimal()
+```
+---
+
+# Summer Olympics
+
+```{r, echo = FALSE}
 # Split data into training and testing sets
 medals_summer_new <- medals_summer %>%
   filter(year!="2016")
@@ -509,41 +526,13 @@ model2_plot <- pred_2016_2 %>%
 ---
 # Winter Olympics
 ```{r, echo = FALSE}
-# Prepare data
-medals_winter <- olympic_medals %>%
-  filter(season == "Winter") %>%
-  group_by(year) %>%  # Group by year
-  mutate(
-    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
-    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
-    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
-  ) %>%
-  ungroup() %>%
-  group_by(year, noc) %>% # Group by year and team (country)
-  summarise(
-    total_medals = n(), # Total medals won
-    num_athletes = n_distinct(id), # Number of unique athletes
-    avg_age = mean(age), # Average age of athletes
-    avg_height = mean(height), # Average height
-    avg_weight = mean(weight), # Average weight
-    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
-    .groups = 'drop'
-  ) %>%
-  arrange(year) %>% # Arrange by year for cumulative calculation
-  group_by(noc) %>%
-  mutate(
-    medals_before = cumsum(total_medals) - total_medals) %>%
-  ungroup() %>%
-  mutate(is_host = as.factor(is_host))
-
-
 # Split data into training and testing sets
 medals_winter_new <- medals_winter %>%
   filter(year!="2014")
 set.seed(1114)
 split_winter <- initial_split(medals_winter_new, prop = 0.8)
-train_winter <- training(split_summer)
-test_winter <- testing(split_summer)
+train_winter <- training(split_winter)
+test_winter <- testing(split_winter)
 
 model <- linear_reg() %>%
   set_engine("lm")
@@ -697,7 +686,8 @@ model2_plot <- pred_2014_2 %>%
 
 # Conclusions
 - Number of athletes, as expected, is present in all models with rmse = 3 (1 s.f). It does impact the likelihood of winning a medal
-- Found that models without nu_athletes have rmse of at least 30
+- number of athletes, as expected, is present in all models with MAE = 2 to 1 sf
+* models without num_athletes have MAE of at least 18 for Summer and 7 for Winter Olympics
 - There is less data for Winter Olympics (started in 1924) which leads to less accurate predictions
 - There is a lot of missing data for early Games in general, some values (age, height, weight) have been substituted for average values for that year and season
 - There are issues tracking medals won before for countries like Soviet Union, Czechoslovakia, East/West Germany

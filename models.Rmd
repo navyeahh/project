@@ -74,11 +74,50 @@ olympic_medals <- olympics %>%
 ```
 
 
+### General Statistics
+
+```{r}
+olympics %>%
+  group_by(noc) %>%
+  summarise(
+    total_medals = n(),
+    num_athletes = n_distinct(id)) %>%
+  arrange(desc(num_athletes))
+
+olympics %>%
+  group_by(noc, sport) %>%
+  summarise(num_athletes = n_distinct(id)) %>%
+  group_by(sport) %>% 
+  slice_max(num_athletes, n = 1) %>%
+  arrange(desc(num_athletes))
+
+
+olympics %>%
+  group_by(sport, noc) %>%                       
+  summarise(num_athletes = n_distinct(id),      
+            .groups = "drop") %>%
+  arrange(desc(num_athletes))   
+
+olympics %>%
+  filter(!is.na(medal)) %>%        
+  group_by(noc) %>%
+  summarise(total_medals = n()) %>%
+  arrange(desc(total_medals))
+
+olympics %>%
+  filter(!is.na(medal)) %>%
+  group_by()
+```
+
+
+
+
+
 ### General Functions
 
 ```{r}
 
-
+# All predictors
 predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
 
 # Compute all subsets of a set excluding the empty one
@@ -191,6 +230,7 @@ medals_summer <- olympic_medals %>%
   filter(season == "Summer") %>%
   group_by(year) %>%  # Group by year
   mutate(
+    season = season,
     age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
     weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
     height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
@@ -198,6 +238,7 @@ medals_summer <- olympic_medals %>%
   ungroup() %>%
   group_by(year, noc) %>% # Group by year and team (country)
   summarise(
+    season = first(season),
     total_medals = n(), # Total medals won
     num_athletes = n_distinct(id), # Number of unique athletes
     avg_age = mean(age), # Average age of athletes
@@ -404,6 +445,7 @@ medals_winter <- olympic_medals %>%
   ungroup() %>%
   group_by(year, noc) %>% # Group by year and team (country)
   summarise(
+    season = first(season),
     total_medals = n(), # Total medals won
     num_athletes = n_distinct(id), # Number of unique athletes
     avg_age = mean(age), # Average age of athletes
@@ -609,11 +651,79 @@ results_winter %>%
 ### Some Conclusions
 
 * number of athletes, as expected, is present in all models with MAE = 2 to 1 sf
-* models without num_athletes have rmse of at least 18 for Summer and 7 for Winter Olympics
+* models without num_athletes have MAE of at least 18 for Summer and 7 for Winter Olympics
 * less data for Winter Olympics (started in 1924) 
 * a lot of missing data for early Games, some values (age, height, weight) substituted for average values for that year and season
 * medals won before - issues with countries like Soviet Union, 	
 Czechoslovakia, East/West Germany
+
+
+```{r}
+all_medals <- suppressMessages(full_join(medals_summer, medals_winter))
+
+
+all_medals %>%
+  group_by(year, season) %>%
+  summarise(total_medals_per_year = sum(total_medals), .groups = "drop") %>%  
+  ggplot(mapping = aes(x = year, y = total_medals_per_year, colour = season)) +  #
+  geom_point() +  
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(group = season)) +  
+  labs(title = "Total Medals Won Each Year",
+       subtitle = "by Season",
+       x = "Year",
+       y = "Total Medals") +
+  theme_minimal() +  # Apply minimal theme for clarity
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+all_medals %>%
+  group_by(year, season) %>%
+  summarise(mean_w = mean(avg_weight), .groups = "drop") %>%  
+  ggplot(mapping = aes(x = year, y = mean_w, colour = season)) +  #
+  geom_point() +  
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(group = season)) +  
+  labs(title = "Average Weight of Athletes Each year",
+       subtitle = "by Season",
+       x = "Year",
+       y = "Average Weight") +
+  theme_minimal() +  # Apply minimal theme for clarity
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+all_medals %>%
+  group_by(year, season) %>%
+  summarise(mean_a = mean(avg_age), .groups = "drop") %>%  
+  ggplot(mapping = aes(x = year, y = mean_a, colour = season)) +  #
+  geom_point() +  
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(group = season)) +  
+  labs(title = "Average Age of Athletes Each year",
+       subtitle = "by Season",
+       x = "Year",
+       y = "Average Age") +
+  theme_minimal() +  # Apply minimal theme for clarity
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+all_medals %>%
+  group_by(year, season) %>%
+  summarise(mean_h = mean(avg_height), .groups = "drop") %>%  
+  ggplot(mapping = aes(x = year, y = mean_h, colour = season)) +  #
+  geom_point() +  
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(group = season)) +  
+  labs(title = "Average Height of Athletes Each year",
+       subtitle = "by Season",
+       x = "Year",
+       y = "Average Height") +
+  theme_minimal() +  # Apply minimal theme for clarity
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+all_medals %>%
+  filter(medals_before > 700) %>%
+  ggplot(mapping = aes(x=medals_before, y = total_medals)) +
+  geom_point()
+
+```
+
 
 
 
