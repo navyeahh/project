@@ -34,10 +34,12 @@ library(xaringanthemer)
 library(readr)
 library(dplyr)
 library(janitor)
+library(patchwork)
 ```
 
 ```{r setup, include=FALSE}
 # For better figure resolution
+
 knitr::opts_chunk$set(fig.retina = 3, dpi = 300, fig.width = 6, fig.asp = 0.618, out.width = "80%")
 ```
 
@@ -208,7 +210,7 @@ class: inverse, center, middle
 
 # Initial exploration
 
-- We explored the overall athletes by team, number of teams per country per sport, medals by teams and win percentage
+- We explored the overall athletes by team, number of teams/athletes per country per sport, medals by teams and win percentage
 
 -- 
 
@@ -231,8 +233,78 @@ class: inverse, center, middle
 - Roughly 4.9% (15% total) of athletes win a gold, silver or bronze medal each. 85% of the athletes at the Olympics have not won medals
 
 ---
+# What we did?
 
-# Model 1 - Summer Olympics
+- We split the data into Winter and Summer and identified 7 predictors 
+
+--
+
+- These were- average age, average height, average weight, previous medals, number of athletes, year of the Olympics and if they were the host country.
+
+---
+
+# Why?
+
+```{r, echo = FALSE}
+olympics_medals <- olympics %>%
+  drop_na()
+
+bounds <- function(variable, s) { 
+  # find lower and upper quartiles
+  Q1 = as.numeric(quantile((olympics_medals%>%filter(season==s))[[variable]], 0.25))
+  Q3 = as.numeric(quantile((olympics_medals%>%filter(season==s))[[variable]], 0.75))
+
+  # find interquartile range
+  IQR <-  Q3 - Q1
+
+  # find lower and upper bounds to filter out outliers
+  lower = Q1 - 1.5 * IQR
+  upper = Q3 + 1.5 * IQR
+  
+  # return values
+  return(list(lower=lower, upper=upper))
+}
+# find upper and lower bounds of age for each season separately
+bsW = bounds("age", "Winter")
+lowerW = bsW$lower
+upperW = bsW$upper
+
+bsS = bounds("age", "Summer")
+lowerS = bsS$lower
+upperS = bsS$upper
+
+# create new dataset by dynamically filtering out entries that are below/above lower/upper bounds
+filteredA <- olympics_medals %>%
+  mutate(
+    lower = ifelse(season == "Winter", lowerW, lowerS),
+    upper = ifelse(season == "Winter", upperW, upperS)
+  ) %>%
+  filter(age >= lower & age <= upper)
+
+filteredA %>%
+  ggplot(mapping = aes(y = age, x = medal)) + 
+  geom_boxplot() + 
+  facet_wrap( ~ season)
+```
+---
+# Why?
+```{r, echo = FALSE}
+filteredA %>%
+  ggplot(mapping = aes(x = age, fill = season)) + 
+  geom_density(alpha = 0.5) + 
+  facet_wrap( ~ medal, 
+              ncol = 1)
+```
+---
+# Why?
+```{r, echo = FALSE}
+filteredA %>% 
+  ggplot(mapping = aes(x = age, fill = medal)) + 
+  geom_density(alpha = 0.5) 
+```
+---
+
+# Summer Olympics
 
 ```{r, echo = FALSE}
 # Prepare data
@@ -271,8 +343,6 @@ split_summer <- initial_split(medals_summer_new, prop = 0.8)
 train_summer <- training(split_summer)
 test_summer <- testing(split_summer)
 
-```
-``` {r, echo = TRUE}
 model <- linear_reg() %>%
   set_engine("lm")
 
@@ -286,21 +356,26 @@ recipe_s1 <- recipe(total_medals ~ num_athletes + medals_before + avg_age + avg_
 workflow_s1 <- workflow() %>%
   add_recipe(recipe_s1) %>%
   add_model(model)
-```
 
----
-
-# Testing this model on the Rio 2016 Summer Olympics
-
-``` {r, echo = FALSE}
 fit_s1 <- fit(workflow_s1, data = train_summer)
+
+
 
 pred_s1 <- predict(fit_s1, test_summer) %>%
   bind_cols(test_summer) %>%
   mutate(.pred = round(.pred)) %>%
   mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+```
+``` {r, echo = FALSE}
+
+
+tidy(fit_s1)
+glance(fit_s1)
 ```
 
+---
+# Testing the model  (all predictors)
 ```{r, echo = FALSE}
 ggplot(pred_s1, aes(x = total_medals, y = .pred)) +
   geom_point(color = "blue") +
@@ -314,92 +389,324 @@ ggplot(pred_s1, aes(x = total_medals, y = .pred)) +
 
 ```
 ---
+# Model performance (metrics)
+``` {r, echo = FALSE}
+rmse(pred_s1, truth = total_medals, estimate = .pred)
+mae(pred_s1, truth = total_medals, estimate = .pred)
 
-# Plots
-
-```{r bounds, echo = TRUE}
-
-
-```
-
-```{r plot-agedist, echo = FALSE}
-# Code hidden with echo = FALSE
 
 ```
-
 ---
+# Summer Olympics (new and improved?)
+```{r, echo = FALSE}
+model <- linear_reg() %>%
+  set_engine("lm")
 
-## Plot and text
 
-.pull-left[
-- Some text
-- goes here
-]
-.pull-right[
-```{r warning=FALSE, out.width="100%", fig.width=4, echo=FALSE}
-# see how I changed out.width and fig.width from defaults
-# to make the figure bigger
-ggplot(penguins, aes(x = bill_length_mm, y = species, color = species)) +
-  geom_boxplot() +
+recipe_s2 <- recipe(total_medals ~  num_athletes + medals_before + avg_height + is_host,
+                    data = train_summer) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric_predictors())
+
+
+workflow_s2 <- workflow() %>%
+  add_recipe(recipe_s2) %>%
+  add_model(model)
+
+fit_s2 <- fit(workflow_s2, data = train_summer)
+
+tidy(fit_s2)
+glance(fit_s2)
+
+
+pred_s2 <- predict(fit_s2, test_summer) %>%
+  bind_cols(test_summer) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+```
+---
+# Testing the model (fewer predictors)
+```{r, echo = FALSE}
+ggplot(pred_s2, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
   theme_minimal()
 ```
-]
-
 ---
-
-# Tables
-
-If you want to generate a table, make sure it is in the HTML format (instead of Markdown or other formats), e.g.,
-
-```{r iris-table, echo = FALSE}
-kable(head(iris), format = "html")
+# Model Performance (Metrics)
+```{r, echo = FALSE}
+rmse(pred_s2, truth = total_medals, estimate = .pred)
+mae(pred_s2, truth = total_medals, estimate = .pred)
 ```
-
 ---
+# Testing both models on Rio 2016
+```{r two-plots, fig.align='center', echo = FALSE}
 
-# Images
+summer_2016 <- medals_summer %>%
+  filter(year == "2016")
 
-```{r castle, echo = FALSE, out.width = "55%", fig.align = "center", fig.cap = "Image credit: Photo by Jörg Angeli on Unsplash."}
-include_graphics("img/edinburgh-castle.jpg")
+pred_2016_1 <- predict(fit_s1, summer_2016) %>%
+  bind_cols(summer_2016) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+pred_2016_2 <- predict(fit_s2, summer_2016) %>%
+  bind_cols(summer_2016) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+# Create two plots
+model1_plot <- pred_2016_1 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  ggtitle("Model 1")+
+  theme_minimal()
+model2_plot <- pred_2016_2 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  ggtitle("Model 2")+
+  theme_minimal()
+
+# Combine plots side by side
+(model1_plot + model2_plot) +
+  plot_layout(widths = c(1, 1), heights = c(0.8)) &  # Adjust sizes
+  theme(plot.margin = margin(10, 20, 10, 20))  # Add margin for spacing
+
 ```
-
-Or you can also include a full page image. See next slide.
-
 ---
+# Findings
+- Our main finding was that the largest errors emerge when there are few medals (for both models)
 
+--
 
-class: inverse, center, middle
-background-image: url(img/edinburgh-castle.jpg)
-background-size: contain
+- In the second model, 
+  - For teams with more than 25 medals, the average error is 6.8%.
+  - The MAE is 1.8, which is 7.8% of the mean (23.5) and we think that is a reasonable fit.
+  
 ---
+# Winter Olympics
+```{r, echo = FALSE}
+# Prepare data
+medals_winter <- olympic_medals %>%
+  filter(season == "Winter") %>%
+  group_by(year) %>%  # Group by year
+  mutate(
+    age = ifelse(is.na(age), mean(age, na.rm = TRUE), age),
+    weight = ifelse(is.na(weight), mean(weight, na.rm = TRUE), weight),
+    height = ifelse(is.na(height), mean(height, na.rm = TRUE), height)
+  ) %>%
+  ungroup() %>%
+  group_by(year, noc) %>% # Group by year and team (country)
+  summarise(
+    total_medals = n(), # Total medals won
+    num_athletes = n_distinct(id), # Number of unique athletes
+    avg_age = mean(age), # Average age of athletes
+    avg_height = mean(height), # Average height
+    avg_weight = mean(weight), # Average weight
+    is_host = if_else(any(noc == host_country), 1, 0), # Check if NOC is the host
+    .groups = 'drop'
+  ) %>%
+  arrange(year) %>% # Arrange by year for cumulative calculation
+  group_by(noc) %>%
+  mutate(
+    medals_before = cumsum(total_medals) - total_medals) %>%
+  ungroup() %>%
+  mutate(is_host = as.factor(is_host))
 
-# Math Expressions
 
-You can write LaTeX math expressions inside a pair of dollar signs, e.g. &#36;\alpha+\beta$ renders $\alpha+\beta$. You can use the display style with double dollar signs:
+# Split data into training and testing sets
+medals_winter_new <- medals_winter %>%
+  filter(year!="2014")
+set.seed(1114)
+split_winter <- initial_split(medals_winter_new, prop = 0.8)
+train_winter <- training(split_summer)
+test_winter <- testing(split_summer)
 
+model <- linear_reg() %>%
+  set_engine("lm")
+
+
+recipe_w1 <- recipe(total_medals ~ num_athletes + medals_before + avg_age + avg_height + avg_weight + year + is_host,
+                    data = train_winter) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric_predictors())
+
+
+workflow_w1 <- workflow() %>%
+  add_recipe(recipe_w1) %>%
+  add_model(model)
+
+fit_w1 <- fit(workflow_w1, data = train_winter)
+
+tidy(fit_w1)
+glance(fit_w1)
 ```
-$$\bar{X}=\frac{1}{n}\sum_{i=1}^nX_i$$
+---
+# Testing the model (all predictors)
+```{r, echo = FALSE}
+pred_w1 <- predict(fit_w1, test_winter) %>%
+  bind_cols(test_winter) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+ggplot(pred_w1, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
 ```
+---
+# Model performance (Metrics)
+```{r, echo = FALSE}
 
-$$\bar{X}=\frac{1}{n}\sum_{i=1}^nX_i$$
+rmse(pred_w1, truth = total_medals, estimate = .pred)
+mae(pred_w1, truth = total_medals, estimate = .pred)
+```
+---
+# Again, could it be made better?
+```{r, echo = FALSE}
+model <- linear_reg() %>%
+  set_engine("lm")
 
-Limitations:
 
-1. The source code of a LaTeX math expression must be in one line, unless it is inside a pair of double dollar signs, in which case the starting `$$` must appear in the very beginning of a line, followed immediately by a non-space character, and the ending `$$` must be at the end of a line, led by a non-space character;
+recipe_w2 <- recipe(total_medals ~ num_athletes + avg_weight + year + medals_before,
+                    data = train_winter) %>%
+  step_dummy(all_nominal()) %>%
+  step_normalize(all_numeric_predictors())
 
-1. There should not be spaces after the opening `$` or before the closing `$`.
 
-1. Math does not work on the title slide (see [#61](https://github.com/yihui/xaringan/issues/61) for a workaround).
+workflow_w2 <- workflow() %>%
+  add_recipe(recipe_w2) %>%
+  add_model(model)
 
+fit_w2 <- fit(workflow_w2, data = train_winter)
+
+tidy(fit_w2)
+glance(fit_w2)
+```
+---
+# Testing the model (fewer predictors)
+```{r, echo = FALSE}
+pred_w2 <- predict(fit_w2, test_winter) %>%
+  bind_cols(test_winter) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred))
+
+ggplot(pred_w2, aes(x = total_medals, y = .pred)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+```
+---
+# Model performance (metrics)
+```{r, echo = FALSE}
+rmse(pred_w2, truth = total_medals, estimate = .pred)
+mae(pred_w2, truth = total_medals, estimate = .pred)
+```
+---
+# Testing both models on Sochi 2014
+``` {r, echo = FALSE}
+winter_2014 <- medals_winter %>%
+  filter(year == "2014")
+
+pred_2014_1 <- predict(fit_w2, winter_2014) %>%
+  bind_cols(winter_2014) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+pred_2014_2 <- predict(fit_w2, winter_2014) %>%
+  bind_cols(winter_2014) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+
+# Create two plots
+model1_plot <- pred_2014_1 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  ggtitle("Model 1")+
+  theme_minimal()
+model2_plot <- pred_2014_2 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  ggtitle("Model 2")+
+  theme_minimal()
+
+# Combine plots side by side
+(model1_plot + model2_plot) +
+  plot_layout(widths = c(1, 1), heights = c(0.8)) &  # Adjust sizes
+  theme(plot.margin = margin(10, 20, 10, 20))  # Add margin for spacing
+```
+---
+# Findings
+- Like the Summer Olympics, bigger differences when predicted number of medals is low.
+
+- Both models have no particularly big, noticeable differences and will give similar values.
+
+--- 
+
+# Conclusions
+- Number of athletes, as expected, is present in all models with rmse = 3 (1 s.f). It does impact the likelihood of winning a medal
+- Found that models without nu_athletes have rmse of at least 30
+- There is less data for Winter Olympics (started in 1924) which leads to less accurate predictions
+- There is a lot of missing data for early Games in general, some values (age, height, weight) have been substituted for average values for that year and season
+- There are issues tracking medals won before for countries like Soviet Union, Czechoslovakia, East/West Germany
 ---
 
-# Feeling adventurous?
+class: center
+# THANK YOU
 
-- Want to find out more about `xaringan`? See https://slides.yihui.name/xaringan/#1.
-
-- You are welcome to use the default styling of the slides. In fact, that's what I expect majority of you will do. You will differentiate yourself with the content of your presentation.
-
-- But some of you might want to play around with slide styling. The 
-`xaringanthemer` provides some solutions for this that: https://pkg.garrickadenbuie.com/xaringanthemer.
-
-- And if you want more bells and whistles, there is also `xaringanExtra`: https://pkg.garrickadenbuie.com/xaringanExtra.
+```{r castle, echo = FALSE, out.width = "55%", fig.align = "center", fig.cap = "Image credit: Photo by Elsa on Getty Images"}
+include_graphics("img/PRESENT.jpg")
+```
+---
