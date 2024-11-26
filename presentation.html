@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Olympic medals over the years</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Team 39   Max Dudik, Navya Bhamidipati" />
+    <meta name="date" content="2024-11-26" />
+    <script src="libs/header-attrs-2.28/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Olympic medals over the years
+]
+.subtitle[
+## A brief analysis
+]
+.author[
+### Team 39 <br> Max Dudik, Navya Bhamidipati
+]
+.institute[
+### University of Edinburgh
+]
+.date[
+### 2024-11-26
+]
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+class: center, middle
+
+## Can we model the likelihood of winning a medal at the Olympics? What factors can we use?
+
+---
+
+class: inverse, center, middle
+
+# A brief overview of the data
+
+---
+
+# Initial exploration
+
+- We explored the overall athletes by team, number of teams/athletes per country per sport, medals by teams and win percentage
+
+-- 
+
+- Here's what we saw:
+
+--
+
+- The top 5 countries with the most Olympians were- USA, France, Great Britain and Germany
+
+--
+
+- The biggest contingents by sports were- USA (Athletics), USA (Swimming), Australia (Swimming), USA (Basketball), Canada (Ice Hockey)
+
+--
+
+- The top 5 countries with the most medals were- United States, Soviet Union, Germany, Australia, Russia (can see how the data itself is slightly problematic here)
+
+--
+
+- Roughly 4.9% (15% total) of athletes win a gold, silver or bronze medal each. 85% of the athletes at the Olympics have not won medals
+
+---
+# What we did?
+
+- We split the data into Winter and Summer and identified 7 predictors 
+
+--
+
+- These were- average age, average height, average weight, previous medals, number of athletes, year of the Olympics and if they were the host country.
+
+---
+
+# Why?
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-2-1.png" width="80%" /&gt;
+---
+# Why?
+&lt;img src="presentation_files/figure-html/unnamed-chunk-3-1.png" width="80%" /&gt;
+---
+# Why?
+&lt;img src="presentation_files/figure-html/unnamed-chunk-4-1.png" width="80%" /&gt;
+---
+
+# Summer Olympics
+
+
+
+```
+## # A tibble: 8 × 5
+##   term          estimate std.error statistic       p.value
+##   &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;         &lt;dbl&gt;
+## 1 (Intercept)    27.7        0.142   195.    0            
+## 2 num_athletes   49.3        0.195   253.    0            
+## 3 medals_before   0.328      0.185     1.77  0.0772       
+## 4 avg_age        -0.0224     0.145    -0.154 0.877        
+## 5 avg_height     -0.345      0.212    -1.63  0.103        
+## 6 avg_weight     -0.0919     0.210    -0.437 0.662        
+## 7 year           -0.901      0.147    -6.14  0.00000000121
+## 8 is_host_X1      0.222      0.156     1.43  0.153
+```
+
+```
+## # A tibble: 1 × 12
+##   r.squared adj.r.squared sigma statistic p.value    df logLik   AIC   BIC
+##       &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     0.992         0.992  4.38    17369.       0     7 -2750. 5517. 5561.
+## # ℹ 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;
+```
+
+---
+# Testing the model  (all predictors)
+&lt;img src="presentation_files/figure-html/unnamed-chunk-7-1.png" width="80%" /&gt;
+---
+# Model performance (metrics)
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard        3.07
+```
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 mae     standard        1.90
+```
+---
+# Summer Olympics (new and improved?)
+
+```
+## # A tibble: 5 × 5
+##   term          estimate std.error statistic p.value
+##   &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+## 1 (Intercept)     27.7       0.145   192.     0     
+## 2 num_athletes    49.4       0.197   250.     0     
+## 3 medals_before    0.122     0.185     0.659  0.510 
+## 4 avg_height      -0.358     0.147    -2.44   0.0150
+## 5 is_host_X1       0.283     0.158     1.79   0.0737
+```
+
+```
+## # A tibble: 1 × 12
+##   r.squared adj.r.squared sigma statistic p.value    df logLik   AIC   BIC
+##       &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     0.992         0.992  4.46    29294.       0     4 -2768. 5549. 5578.
+## # ℹ 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;
+```
+---
+# Testing the model (fewer predictors)
+&lt;img src="presentation_files/figure-html/unnamed-chunk-10-1.png" width="80%" /&gt;
+---
+# Model Performance (Metrics)
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard        3.18
+```
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 mae     standard        1.81
+```
+---
+# Testing both models on Rio 2016
+&lt;img src="presentation_files/figure-html/two-plots-1.png" width="80%" style="display: block; margin: auto;" /&gt;
+---
+# Findings
+- Our main finding was that the largest errors emerge when there are few medals (for both models)
+
+--
+
+- In the second model, 
+  - For teams with more than 25 medals, the average error is 6.8%.
+  - The MAE is 1.8, which is 7.8% of the mean (23.5) and we think that is a reasonable fit.
+  
+---
+# Winter Olympics
+
+```
+## # A tibble: 8 × 5
+##   term          estimate std.error statistic       p.value
+##   &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;         &lt;dbl&gt;
+## 1 (Intercept)    27.7        0.142   195.    0            
+## 2 num_athletes   49.3        0.195   253.    0            
+## 3 medals_before   0.328      0.185     1.77  0.0772       
+## 4 avg_age        -0.0224     0.145    -0.154 0.877        
+## 5 avg_height     -0.345      0.212    -1.63  0.103        
+## 6 avg_weight     -0.0919     0.210    -0.437 0.662        
+## 7 year           -0.901      0.147    -6.14  0.00000000121
+## 8 is_host_X1      0.222      0.156     1.43  0.153
+```
+
+```
+## # A tibble: 1 × 12
+##   r.squared adj.r.squared sigma statistic p.value    df logLik   AIC   BIC
+##       &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     0.992         0.992  4.38    17369.       0     7 -2750. 5517. 5561.
+## # ℹ 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;
+```
+---
+# Testing the model (all predictors)
+&lt;img src="presentation_files/figure-html/unnamed-chunk-13-1.png" width="80%" /&gt;
+---
+# Model performance (Metrics)
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard        3.07
+```
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 mae     standard        1.90
+```
+---
+# Again, could it be made better?
+
+```
+## # A tibble: 5 × 5
+##   term          estimate std.error statistic  p.value
+##   &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+## 1 (Intercept)     27.7       0.142    195.   0       
+## 2 num_athletes    49.4       0.181    273.   0       
+## 3 avg_weight      -0.352     0.143     -2.46 1.40e- 2
+## 4 year            -0.907     0.145     -6.25 6.08e-10
+## 5 medals_before    0.260     0.183      1.42 1.55e- 1
+```
+
+```
+## # A tibble: 1 × 12
+##   r.squared adj.r.squared sigma statistic p.value    df logLik   AIC   BIC
+##       &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     0.992         0.992  4.38    30335.       0     4 -2752. 5516. 5545.
+## # ℹ 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;
+```
+---
+# Testing the model (fewer predictors)
+&lt;img src="presentation_files/figure-html/unnamed-chunk-16-1.png" width="80%" /&gt;
+---
+# Model performance (metrics)
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard        3.04
+```
+
+```
+## # A tibble: 1 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 mae     standard        1.91
+```
+---
+# Testing both models on Sochi 2014
+&lt;img src="presentation_files/figure-html/unnamed-chunk-18-1.png" width="80%" /&gt;
+---
+# Findings
+- Like the Summer Olympics, bigger differences when predicted number of medals is low.
+
+- Both models have no particularly big, noticeable differences and will give similar values.
+
+--- 
+
+# Conclusions
+- Number of athletes, as expected, is present in all models with rmse = 3 (1 s.f). It does impact the likelihood of winning a medal
+- Found that models without nu_athletes have rmse of at least 30
+- There is less data for Winter Olympics (started in 1924) which leads to less accurate predictions
+- There is a lot of missing data for early Games in general, some values (age, height, weight) have been substituted for average values for that year and season
+- There are issues tracking medals won before for countries like Soviet Union, Czechoslovakia, East/West Germany
+---
+
+class: center
+# THANK YOU
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="img/PRESENT.jpg" alt="Image credit: Photo by Elsa on Getty Images" width="55%" /&gt;
+&lt;p class="caption"&gt;Image credit: Photo by Elsa on Getty Images&lt;/p&gt;
+&lt;/div&gt;
+---
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"ratio": "16:9",
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -23,6 +23,7 @@ library(tidymodels)
 
 ```{r load-data, echo=FALSE}
 olympics <- read_csv("data/olympics.csv", show_col_types = FALSE)
+
 olympic_medals <- olympics %>% 
   filter(!is.na(medal)) %>%
   mutate(
@@ -70,7 +71,6 @@ olympic_medals <- olympics %>%
      city == "Torino" ~ "ITA",
      city == "Vancouver" ~ "CAN"
      )) 
-
 ```
 
 
@@ -81,25 +81,24 @@ olympic_medals <- olympics %>%
 
 predictors <- c("year", "num_athletes", "medals_before", "is_host", "avg_age", "avg_height", "avg_weight")
 
-# Function to compute the powerset (excluding the empty set)
+# Compute all subsets of a set excluding the empty one
 powerset <- function(set) {
   n <- length(set)
   subsets <- unlist(lapply(1:n, function(k) combn(set, k, simplify = FALSE)), recursive = FALSE)
   
-  # Filter out the empty set
   subsets <- subsets[sapply(subsets, length) > 0]
   
   return(subsets)
 }
 
-# Generate the powerset (including the empty set)
+
 all_subsets <- powerset(predictors)
 
 ```
 
 ```{r}
 
-# Function to fit the model on a single subset and return adjusted R-squared and MAE
+# Fit the model on a single set of predictors, return adjusted R-squared and MAE
 fit_model_for_subset <- function(subset, train_data, test_data) {
   # Check if the subset is empty
   if (length(subset) == 0) {
@@ -109,10 +108,10 @@ fit_model_for_subset <- function(subset, train_data, test_data) {
   # Create formula dynamically from the subset
   formula <- as.formula(paste("total_medals ~", paste(subset, collapse = " + ")))
   
-  # Define the recipe for preprocessing
+  # Define the recipe
   recipe_sub <- recipe(formula, data = train_data) %>%
     step_dummy(all_nominal()) %>%   # Create dummy variables for factors
-    step_normalize(all_numeric_predictors())  # Normalise numeric predictors
+    step_normalize(all_numeric_predictors())  
   
   # Define the linear regression model
   model <- linear_reg() %>%
@@ -126,6 +125,7 @@ fit_model_for_subset <- function(subset, train_data, test_data) {
   # Fit the model
   fit_sub <- fit(workflow_sub, data = train_data)
   
+  # Make predictions
   pred_sub <- predict(fit_sub, test_data) %>%
     bind_cols(test_data) %>%
     mutate(.pred = round(.pred)) %>%
@@ -140,6 +140,7 @@ fit_model_for_subset <- function(subset, train_data, test_data) {
   return(list(mae = mae_value, adj_r_squared = adj_r_squared))
 }
 
+# Apply fit_model_for_subset to all combinations of predictors
 evaluate_all_subsets <- function(all_subsets, train_data, test_data) {
   # Initialize an empty list to store results
   results <- list()
@@ -210,12 +211,14 @@ medals_summer <- olympic_medals %>%
   mutate(
     medals_before = cumsum(total_medals) - total_medals) %>%
   ungroup() %>%
-  mutate(is_host = as.factor(is_host))
+  mutate(is_host = as.factor(is_host)) # Convert is_host to factor
 
 
-# Split data into training and testing sets
+# Remove 2016 to test on it separately
 medals_summer_new <- medals_summer %>%
   filter(year!="2016")
+
+# Split data into training and testing sets
 set.seed(1114)
 split_summer <- initial_split(medals_summer_new, prop = 0.8)
 train_summer <- training(split_summer)
@@ -230,7 +233,7 @@ test_summer <- testing(split_summer)
 
 ```{r}
 
-# Apply evaluate_all_subsets() to all subsets
+# Apply evaluate_all_subsets() to all sets of predictors
 results_summer <- evaluate_all_subsets(all_subsets, train_summer, test_summer)
 ```
 
@@ -414,16 +417,18 @@ medals_winter <- olympic_medals %>%
   mutate(
     medals_before = cumsum(total_medals) - total_medals) %>%
   ungroup() %>%
-  mutate(is_host = as.factor(is_host))
+  mutate(is_host = as.factor(is_host)) # Convert is_host to factor
 
 
-# Split data into training and testing sets
+# Remove 2014 to test on it separately
 medals_winter_new <- medals_winter %>%
   filter(year!="2014")
+
+# Split data into training and testing sets
 set.seed(1114)
 split_winter <- initial_split(medals_winter_new, prop = 0.8)
-train_winter <- training(split_summer)
-test_winter <- testing(split_summer)
+train_winter <- training(split_winter)
+test_winter <- testing(split_winter)
 
 ```
 
@@ -435,9 +440,6 @@ test_winter <- testing(split_summer)
 
 # Apply evaluate_all_subsets() to all subsets
 results_winter <- evaluate_all_subsets(all_subsets, train_winter, test_winter) 
-
-head(results_winter)
-
 
 ```
 
@@ -499,7 +501,7 @@ model <- linear_reg() %>%
   set_engine("lm")
 
 
-recipe_w2 <- recipe(total_medals ~ num_athletes + avg_weight + year + medals_before,
+recipe_w2 <- recipe(total_medals ~ num_athletes + avg_weight + avg_height + year + medals_before,
                     data = train_winter) %>%
   step_dummy(all_nominal()) %>%
   step_normalize(all_numeric_predictors())
@@ -533,12 +535,18 @@ ggplot(pred_w2, aes(x = total_medals, y = .pred)) +
 pred_w2
 
 rmse(pred_w2, truth = total_medals, estimate = .pred)
+mae(pred_w2, truth = total_medals, estimate = .pred)
+
+
+results_winter %>%
+  filter(mae < 2)%>%
+  count()
 ```
-* note that top 5 have rmse = 3.0 to 2 sf
-* top 32 - 3.1 to 2 sf
-* top 64 - 3 to 1 sf
+* note that top 2 have MAE = 1.61 to 3 sf
+* top 7 - 1.6 to 2 sf
+* top 64 - 2 to 1 sf
 * no big differences, so best models will give pretty much the same values for predicted number of medals (differences likely to be more visible when number of medals is low)
-* half of the models have average deviation from the real number of total medals won of 3 medals
+* half of the models have average deviation from the real number of total medals won of 2 medals
 
 
 
@@ -585,8 +593,8 @@ results_winter %>%
   count()
 ```
 
-* average error for teams with more than 10 medals is 18.4%
-* rmse is 5.2, or 22.6% of mean, which is a worse fit than for Summer Olympics
+* average error for teams with more than 10 medals is 12.4%
+* rmse is 2.9, or 12.6% of mean (23.0), which is a worse fit than for Summer Olympics
 
 
 
@@ -600,9 +608,9 @@ results_winter %>%
 
 ### Some Conclusions
 
-* number of athletes, as expected, is present in all models with rmse = 3 to 1 sf
-* models without nu_athletes have rmse of at least 30
-* less data for Winter Olympics (started in 1924) so less accurate predictions
+* number of athletes, as expected, is present in all models with MAE = 2 to 1 sf
+* models without num_athletes have rmse of at least 18 for Summer and 7 for Winter Olympics
+* less data for Winter Olympics (started in 1924) 
 * a lot of missing data for early Games, some values (age, height, weight) substituted for average values for that year and season
 * medals won before - issues with countries like Soviet Union, 	
 Czechoslovakia, East/West Germany
