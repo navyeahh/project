@@ -585,7 +585,7 @@ model <- linear_reg() %>%
   set_engine("lm")
 
 
-recipe_w2 <- recipe(total_medals ~ num_athletes + avg_weight + year + medals_before,
+recipe_w2 <- recipe(total_medals ~ num_athletes + avg_weight + avg_height + year + medals_before,
                     data = train_winter) %>%
   step_dummy(all_nominal()) %>%
   step_normalize(all_numeric_predictors())

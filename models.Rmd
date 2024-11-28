@@ -641,8 +641,43 @@ results_winter %>%
 
 
 
+```{r}
+pred_2014_1 <- predict(fit_w1, winter_2014) %>%
+  bind_cols(winter_2014) %>%
+  mutate(.pred = round(.pred)) %>%
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) %>%     
+  select(noc, total_medals, .pred) %>%          
+  arrange(desc(total_medals)) %>%
+  mutate(pct_error = ((abs(total_medals - .pred))/total_medals) * 100)
+
+pred_2014_1 %>% slice_head(n = 10)
+
+pred_2014_1 %>%
+  ggplot(mapping = aes(x = .pred, y = total_medals)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Total Medals",
+    x = "Actual Medals",
+    y = "Predicted Medals"
+  ) +
+  theme_minimal()
+
+pred_2014_1 %>%
+  filter(total_medals > 10) %>%
+  summarise(avg_error = mean(pct_error)) 
+
+rmse(pred_2014_1, truth = total_medals, estimate = .pred)
+mae(pred_2014_1, truth = total_medals, estimate = .pred)
+
+pred_2014_1 %>%
+  summarise(avg = mean(total_medals))
 
 
+results_winter %>%
+  filter(mae < 2)%>%
+  count()
+```
 
 
 

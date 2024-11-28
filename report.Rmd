@@ -31,48 +31,61 @@ library(tidyverse)
 
 ## Research Question
 
-Describe your research question here. Include why this question might be of interest. 
+Can we predict the number of medals won by a country at the Olympics? What factors can be used to determine this?
+The primary objective of this project was to explore and develop models to predict the number of medals won by national teams at Olympic Games. 
+We analysed historical data starting with 1896 Olympics up to 2016 and considered metrics including athletes’ age, height and weight, number of athletes from each country, the year of the Olympic Games and others. Since the Summer and Winter Olympics consist of sports requiring varied abilities and they are competed in contrasting environments, we thought exploring these relationships separately for both these editions would provide a more realistic answer to our main question. 
 
+This research question could be of particular interest to various groups of people; national Olympic committees, coaches, athletes and sports analysts (or betters) to name a few. For Olympic committees, this provides a realistic estimate on the proportion of athletes of their contingent that can win a medal and allows them to prioritise funding for different sports. For coaches, they can know what physical attributes to prioritise and also use these as selection criteria when deciding the number of athletes they want to take as well as the kinds of athletes (this is kind of stupid, no country would actually do this) if they are VERY selfish and objective and want to maximise chances. Athletes can also use this to either aspire towards certain goals or to set realistic expectations about their chances at the Olympic games based on past data about their country and its performance in their sport. Sports analysts and betters that want to increase their chances of winning can use this to bet on athletes/teams with the most favourable characteristics.
 
-
-
-
+ 
 ## Data
 
-Briefly describe your dataset here - include a description of the key variables you will be investigating. 
-Include a citation for your data. 
-See http://libraryguides.vu.edu.au/c.php?g=386501&p=4347840 for guidance on proper citation for datasets. 
-If you got your data off the web, make sure to state the retrieval date.
+As mentioned above, the dataset covered all Olympic Games from 1896 to 2016. Each observation (row) contains data about the performance of a single athlete in a particular competition. The variables are: the name of the athlete, sex, age, height, weight, team, NOC, games, year, season, city, sport, event and medal. 
 
 
 
+## Our Approach
+
+Before we could start working on the models, we did some data tidying and wrangling. Firstly, we split the data into separate datasets, one for each season. This allowed us to find identify patterns for bot seasons tailor the models for the specifics of Summer and Winter Olympic Games (for example, Winter Olympics tend to have fewer countries and athletes than Summer Olympics). Secondly, we dealt with missing data (mostly age, weight and height of individual athletes) by substituting those with the  average values for the corresponding year and season. Finally, we focused on medal winners and summarised the data for each year and team, finding the values for total number of athletes, their average age, height and weight. Moreover, we counted the number of medals won by each team before particular Olympic Games and identified whether a country hosted particular Games. 
 
 
+## General Findings
 
-## Findings
-
-The write-up of your project and findings go here. 
-
-Think of this as the text of your presentation with some extra detail to cover what there was not time to discuss in the presentation. This might include any assumptions you made when doing your analysis, any limitations of the work you have done or any ideas you have for future work. Feel free to split this section into subsections to make it easier to read. 
-
-The length should be roughly 1,500 words. 
-If you want to use a word count addin, you can install this by copying and pasting the following into RStudio:
-
-`devtools::install_github("benmarwick/wordcountaddin", type = "source", dependencies = TRUE)`
-
-You will then need to restart RStudio. Once you have done that, select the text you want to count the words of, go to Addins, and select the `Word count` addin.
-This addin counts words using two different algorithms, but the results should be similar and as long as you're in the ballpark of 1,500 words, you're good! 
-The addin will ignore code chunks and only count the words in prose. If you don't want to use the addin you can always copy and paste the text into Microsoft Word to do a Word Count!
-
-You can also load your data here and present any analysis results / plots.
-Make sure to hide your code with  `echo = FALSE` unless the point you are trying to make is about the code itself, in which case you should show your code.
+We used the medal winners to find the overall win percentage, number of athletes per team, medals per team and teams in each sport. We found that the top 5 contingents at the Olympics (of all time) were: USA, France, Great Britain, Italy and Germany. The biggest contingents by sport were USA Athletics, USA Swimming, Australia Swimming, USA Basketball and Canada Ice Hockey. The countries with the most medals were the USA, Soviet Union, Germany, Australia and Russia (this is already showing one of the drawbacks of the dataset). When we found the overall win percentage, we found that about 15% of athletes that have been to the olympics win medals (about 4.9% for gold, silver and bronze respectively).
 
 
+## Models
 
+When splitting the data into training and testing sets, we excluded he 2016 Rio Summer Olympics and the 2014 Sochi Winter Olympics from the corresponding datasets in order to make predictions for those years separately. Our general approach involved testing models with all possible combinations of the seven predictors (year, num_athletes, avg_age, avg_weight, avg_height, medals_before, is_host) and selecting the ones that shoved the lowest value of MAE (Mean Absolute Error) when making predictions on the testing data. The final step was to test the best performing models on the Rio 2016 and Sochi 2014 datasets. For a better understanding of the results, we also looked at the values of RMSE (Root Mean Squared Error). 
+
+In the first model, we explored the effect of all our explanatory variables on the total medals. We then applied this model to our testing data, resulting in RMSE of 3.07 and MAE of 1.90. After exploring other combinations, we came up with a better model that omitted average age, average weight, year of the Olympics. This time, the metrics were: RMSE of 3.18 and MAE of 1.81.  We found that the two best performing models  have MAE of 1.81 (3.sf) and that the big deviations were more likely to be visible when the number of medals won was low. We then used our best models to compare the actual and predicted medals won in the Rio 2016 Olympics as mentioned before and saw very similar results with average MAE of 1.8 and average error of 7% for teams that won more than 25 medals.
+
+We did the same analysis for the Winter Olympics and our findings were as follows: MAE of 1.64 for the model with all predictors and 1.61 for the one excluding avg_weight and is_host. Predicting the number of medals won in 2014 in Sochi, we got MAE of about 1.8 and average error of 12% for countries that won more than 10 medals. 
+
+Some of our findings throughout this analysis were:
+*	Number of athletes is a significant variable and is present in all the best models with an MAE of 2 (1 s.f). Models without num_athletes have an MAE of at least 18 for Summer Olympics and 7 for Winter Olympics.
+*	There is less data for Winter Olympics (started in 1924) which may lead to a less accurate prediction compared to the Summer Olympics.
+*	There is also a lot of missing data for early Games. As a result, we substituted some values (age, height, weight) for average values for that year and season. This may also lead to a less accurate interpretation and prediction as the average is not representative of the actual values for these variables in these games.
+*	For the medals won before, there are issues with countries like Soviet Union, Czechoslovakia, East/West Germany that are no longer existent or have fragmented into different nations. These medals cannot be tallied into their current countries i.e if we wanted to divide the medals won by the Soviet Union prior to its disbanding, we would not be able to divide them “equally” or “correctly” between the different nations that emerged as a result.
+
+
+## Limitations 
+
+*	The dataset itself was flawed. This can be overcome by finding a way to accommodate for these (now) irrelevant values and modifying the dataset.
+*	We do not know how accurate the data from older games is. This dataset consists of Olympic Games from 1900 onwards- the quality of this data may be compromised because of human error or simply because technology wasn’t advanced (or accessible) enough to store such information back then. Unfortunately, there is no way to rectify this and we need to give the benefit of doubt and hope it is representative.
+*	We used RMSE and MAE to evaluate model performance and these can be affected by outliers or any large deviations. While there aren’t any significant outliers in our dataset, this could be a possible drawback of our analysis.
+
+We do acknowledge that the factors we considered might not have a direct impact on the number of medals a team might win. However, there is a correlation and our models have shown reasonable performance. For more accurate results, it is better to look at different sports separately and consider not only general factors about countries (from number of athletes sent to GDP per capita) to more specific ones (quality and number of training facilities, etc.)
+ 
+
+
+## Conclusion 
+
+Various factors do affect the likelihood of an athlete/team of winning an Olympic medal (Summer and Winter Olympics). However, it is important to note that the number of athletes from a country is a significant variable that impacts this likelihood in all models and should be an important consideration.
+
+We found out that factors like the number of athletes and the number of medals won before are important factors that are to be considered when trying to predict the performance of a national team at the Olympic Games. Due to the limitations mentioned above (missing data, counting previously won medals for new countries) our predictions were not as accurate as they could be. Looking beyond the data we used, factors like population of a country and GDP per capita can also be used to predict the number of olympic medals. Furthermore, one could focus on a particular sport to get more accurate predictions. 
 
 
 ## References
 
-List any references here. You should, at a minimum, list your data source.
-
-
+Rfordatascience (no date) Tidytuesday/Data/2024/2024-08-06 at master · rfordatascience/tidytuesday, GitHub. Available at: https://github.com/rfordatascience/tidytuesday/tree/master/data/2024/2024-08-06 (Accessed: 15 November 2024). 
