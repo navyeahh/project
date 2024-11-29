@@ -4,7 +4,7 @@
     <title>Olympic medals over the years</title>
     <meta charset="utf-8" />
     <meta name="author" content="Team 39   Max Dudik, Navya Bhamidipati" />
-    <meta name="date" content="2024-11-28" />
+    <meta name="date" content="2024-11-29" />
     <script src="libs/header-attrs-2.28/header-attrs.js"></script>
     <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
   </head>
@@ -25,7 +25,7 @@ class: center, middle, inverse, title-slide
 ### University of Edinburgh
 ]
 .date[
-### 2024-11-28
+### 2024-11-29
 ]
 
 ---
@@ -189,15 +189,7 @@ class: inverse, center, middle
 ---
 # Testing both models on Rio 2016
 &lt;img src="presentation_files/figure-html/two-plots-1.png" width="80%" style="display: block; margin: auto;" /&gt;
----
-# Findings
-- Our main finding was that the largest errors emerge when there are few medals (for both models)
 
---
-
-- In the second model, 
-  - For teams with more than 25 medals, the average error is 6.8%.
-  - The MAE is 1.8, which is 7.8% of the mean (23.5) and we think that is a reasonable fit.
   
 ---
 # Winter Olympics
@@ -287,19 +279,32 @@ class: inverse, center, middle
 # Testing both models on Sochi 2014
 &lt;img src="presentation_files/figure-html/unnamed-chunk-19-1.png" width="80%" /&gt;
 ---
-# Findings
-- Like the Summer Olympics, bigger differences when predicted number of medals is low.
 
-- Both models have no particularly big, noticeable differences and will give similar values.
+# Conclusions and Limitations
+- Rio 2016: average error of 7% and MAE of 1.8 for teams with more than 25 medals
 
---- 
+--
 
-# Conclusions
-- Number of athletes, as expected, is present in all models with rmse = 3 (1 s.f). It does impact the likelihood of winning a medal
-- number of athletes, as expected, is present in all models with MAE = 2 to 1 sf
-* models without num_athletes have MAE of at least 18 for Summer and 7 for Winter Olympics
-- There is less data for Winter Olympics (started in 1924) which leads to less accurate predictions
+- Sochi 2014: average error of 12% and MAE of 1.8 for teams with more than 10 medals
+
+--
+
+- Number of athletes, as expected, is present in all models with MAE = 2 to 1 sf
+
+--
+
+- Models without num_athletes have MAE of at least 18 for Summer and 7 for Winter Olympics
+
+--
+
+- There is less data for Winter Olympics (started in 1924) which can lead to less accurate predictions
+
+--
+
 - There is a lot of missing data for early Games in general, some values (age, height, weight) have been substituted for average values for that year and season
+
+--
+
 - There are issues tracking medals won before for countries like Soviet Union, Czechoslovakia, East/West Germany
 ---
 

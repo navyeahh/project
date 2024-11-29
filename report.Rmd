@@ -33,7 +33,7 @@ library(tidyverse)
 
 Can we predict the number of medals won by a country at the Olympics? What factors can be used to determine this?
 The primary objective of this project was to explore and develop models to predict the number of medals won by national teams at Olympic Games. 
-We analysed historical data starting with 1896 Olympics up to 2016 and considered metrics including athletes’ age, height and weight, number of athletes from each country, the year of the Olympic Games and others. Since the Summer and Winter Olympics consist of sports requiring varied abilities and they are competed in contrasting environments, we thought exploring these relationships separately for both these editions would provide a more realistic answer to our main question. 
+We analysed historical data starting with 1896 Olympics up to 2016 and considered metrics including athletes’ age, height and weight, number of athletes from each country, the year of the Olympic Games and others. Since the Summer and Winter Olympics consist of sports requiring varied abilities and they are competed in contrasting environments, we thought exploring these relationships separately from each other would provide a more realistic answer to our main question. 
 
 This research question could be of particular interest to various groups of people; national Olympic committees, coaches, athletes and sports analysts (or betters) to name a few. For Olympic committees, this provides a realistic estimate on the proportion of athletes of their contingent that can win a medal and allows them to prioritise funding for different sports. For coaches, they can know what physical attributes to prioritise and also use these as selection criteria when deciding the number of athletes they want to take to maximise chances. Athletes can also use this to either aspire towards certain goals or to set realistic expectations about their chances at the Olympic games based on past data about their country and its performance in their sport. Sports analysts and betters that want to increase their chances of winning can use this to bet on athletes/teams with the most favourable characteristics.
 
@@ -46,7 +46,7 @@ As mentioned above, the dataset covered all Olympic Games from 1896 to 2016. Eac
 
 ## Our Approach
 
-Before we could start working on the models, we did some data tidying and wrangling. Firstly, we split the data into separate datasets, one for each season. This allowed us to find identify patterns for bot seasons tailor the models for the specifics of Summer and Winter Olympic Games (for example, Winter Olympics tend to have fewer countries and athletes than Summer Olympics). Secondly, we dealt with missing data (mostly age, weight and height of individual athletes) by substituting those with the  average values for the corresponding year and season. Finally, we focused on medal winners and summarised the data for each year and team, finding the values for total number of athletes, their average age, height and weight. Moreover, we counted the number of medals won by each team before particular Olympic Games and identified whether a country hosted particular Games. 
+Before we could start working on the models, we did some data tidying and wrangling. Firstly, we split the data into separate datasets, one for each season. This allowed us to identify patterns for bot seasons and tailor the models for the specifics of Summer and Winter Olympic Games (for example, Winter Olympics tend to have fewer countries and athletes than Summer Olympics). Secondly, we dealt with missing data (mostly age, weight and height of individual athletes) by substituting those with the  average values for the corresponding year and season. Finally, we focused on medal winners and summarised the data for each year and team, finding the values for total number of athletes, their average age, height and weight. Moreover, we counted the number of medals won by each team before particular Olympic Games and identified whether a country hosted particular Games. 
 
 
 ## General Findings
@@ -71,7 +71,6 @@ Some of our findings throughout this analysis were:
 
 ## Limitations 
 
-*	The dataset itself was flawed. This can be overcome by finding a way to accommodate for these (now) irrelevant values and modifying the dataset.
 *	We do not know how accurate the data from older games is. This dataset consists of Olympic Games from 1900 onwards- the quality of this data may be compromised because of human error or simply because technology wasn’t advanced (or accessible) enough to store such information back then. Unfortunately, there is no way to rectify this and we need to give the benefit of doubt and hope it is representative.
 *	We used RMSE and MAE to evaluate model performance and these can be affected by outliers or any large deviations. While there aren’t any significant outliers in our dataset, this could be a possible drawback of our analysis.
 
@@ -81,11 +80,8 @@ We do acknowledge that the factors we considered might not have a direct impact 
 
 ## Conclusion 
 
-Various factors do affect the likelihood of an athlete/team of winning an Olympic medal (Summer and Winter Olympics). However, it is important to note that the number of athletes from a country is a significant variable that impacts this likelihood in all models and should be an important consideration.
-
-We found out that factors like the number of athletes and the number of medals won before are important factors that are to be considered when trying to predict the performance of a national team at the Olympic Games. Due to the limitations mentioned above (missing data, counting previously won medals for new countries) our predictions were not as accurate as they could be. Looking beyond the data we used, factors like population of a country and GDP per capita can also be used to predict the number of olympic medals. Furthermore, one could focus on a particular sport to get more accurate predictions. 
-
+We found out that factors like the number of athletes and the number of medals won before are important variables that are to be considered when trying to predict the performance of a national team at the Olympic Games. Due to the limitations mentioned above (missing data, counting previously won medals for new countries) our predictions were not as accurate as they could be. Looking beyond the data we used, factors like population of a country and GDP per capita can also be used to predict the number of olympic medals. Furthermore, focusing on a particular sport and considering more specific factors is likely to result in more accurate predictions
 
 ## References
 
-Rfordatascience (no date) Tidytuesday/Data/2024/2024-08-06 at master · rfordatascience/tidytuesday, GitHub. Available at: https://github.com/rfordatascience/tidytuesday/tree/master/data/2024/2024-08-06 (Accessed: 15 November 2024). 
+Rfordatascience  Tidytuesday/Data/2024/2024-08-06 at master · rfordatascience/tidytuesday, GitHub. Available at: https://github.com/rfordatascience/tidytuesday/tree/master/data/2024/2024-08-06 (Accessed: 15 November 2024). 
